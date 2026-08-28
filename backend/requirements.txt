@@ -1,0 +1,10 @@
+fastapi
+hypercorn
+redis
+python-dotenv
+slowapi
+asyncpg
+pymongo
+jinja2
+bcrypt
+httpx
