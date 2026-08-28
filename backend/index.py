@@ -40,7 +40,7 @@ TRUST_PROXY = True
 async def lifespan(app: FastAPI):
     if os.getenv("USE_DB") == "true":
         await startup()
-        await connect_to_mongodb()
+    
     else:
         print("DB Disabled: change at env")
     yield

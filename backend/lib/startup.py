@@ -16,8 +16,5 @@ async def startup():
     if os.getenv("USE_DB") == "true":
         await db.connect()
 
-        await connect_to_mongodb()
-
-
     else:
         print("DB Disabled: change at env")

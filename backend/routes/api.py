@@ -11,4 +11,3 @@ router = APIRouter()
 @router.get('')
 async def confirm_without_slash():
     return {'success': 'here no slash i know we said hello world but my routes were being weird'}
-
