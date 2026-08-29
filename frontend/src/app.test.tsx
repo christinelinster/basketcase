@@ -3,13 +3,13 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import App from './App.tsx'
 
-test('renders content', async () => {
+test('increments the counter', async () => {
   render(<App />)
 
-
   const user = userEvent.setup()
-  const button = screen.getByText('Count is 0')
+  const button = screen.getByRole('button', { name: 'count is 0' })
+
   await user.click(button)
-  
-  expect(screen.getByText('Count is 1')).toBeDefined()
+
+  expect(screen.getByRole('button', { name: 'count is 1' })).toBeDefined()
 })
