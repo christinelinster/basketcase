@@ -1,8 +1,10 @@
+import { Link } from 'react-router-dom';
+
 function Nav() {
   return (
     <header className="nav" style={{ padding: '14px 28px', boxShadow: 'inset 0 -1px 0 color-mix(in srgb, var(--color-text) 10%, transparent)' }}>
-      <a
-        href="#/"
+      <Link
+        to="/"
         className="nav-brand"
         style={{ display: 'flex', alignItems: 'center', gap: 10, textDecoration: 'none', color: 'var(--color-text)' }}
       >
@@ -16,7 +18,7 @@ function Nav() {
           }}
         />
         Basket Case
-      </a>
+      </Link>
     </header>
   );
 }

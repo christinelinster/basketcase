@@ -1,3 +1,4 @@
+// TEMPORARY MOCK DATA WHILE BACKEND IS STUBBED
 import type { Basket, CapturedRequest } from '../types/basket';
 
 const ALPHA = 'abcdefghijkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789';

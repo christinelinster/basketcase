@@ -1,16 +1,21 @@
+// >> React
 import { useEffect, useRef, useState } from 'react';
-import type { CapturedRequest } from '../types/basket';
-import { makeRequest, seedRequests } from '../lib/mockData';
+// > Components
 import RequestCard from './RequestCard';
+// > Types
+import type { CapturedRequest } from '../types/basket';
+
+import { makeRequest, seedRequests } from '../lib/mockData';
 
 const RECENT_LIMIT = 10;
 
-interface BasketDetailPageProps {
-  name: string;
+interface BasketPageProps {
+  name: string,
   onDelete: () => void;
 }
 
-function BasketDetailPage({ name, onDelete }: BasketDetailPageProps) {
+function BasketPage({ name, onDelete }: BasketPageProps) {
+
   const [requests, setRequests] = useState<CapturedRequest[]>([]);
   const [total, setTotal] = useState(0);
   const [auto, setAuto] = useState(false);
@@ -18,6 +23,8 @@ function BasketDetailPage({ name, onDelete }: BasketDetailPageProps) {
   const seq = useRef(0);
   const timer = useRef<number | null>(null);
   const copyTimer = useRef<number | null>(null);
+
+  if (name === undefined) return
 
   useEffect(() => {
     const seeds = seedRequests(name, RECENT_LIMIT);
@@ -144,4 +151,4 @@ function BasketDetailPage({ name, onDelete }: BasketDetailPageProps) {
   );
 }
 
-export default BasketDetailPage;
+export default BasketPage;

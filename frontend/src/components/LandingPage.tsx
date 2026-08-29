@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import type { Basket } from '../types/basket';
 import { ago, makeToken } from '../lib/mockData';
 
@@ -81,9 +82,9 @@ function LandingPage({ baskets, onCreate }: LandingPageProps) {
         </div>
         <div style={{ maxHeight: 340, overflowY: 'auto', padding: '0 8px 10px' }}>
           {baskets.map((b) => (
-            <a
+            <Link
               key={b.name}
-              href={`#/${b.name}`}
+              to={`/baskets/${b.name}`}
               className="mono bskt"
               style={{
                 display: 'flex',
@@ -101,7 +102,7 @@ function LandingPage({ baskets, onCreate }: LandingPageProps) {
               <span className="text-muted" style={{ fontSize: 11 }}>
                 {ago(b.created)}
               </span>
-            </a>
+            </Link>
           ))}
           {!baskets.length && (
             <div className="text-muted" style={{ fontSize: 12, padding: '6px 8px 10px' }}>
