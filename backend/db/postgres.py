@@ -1,108 +1,82 @@
-import os
 import asyncpg
 
-POSTGRES_URL = os.getenv(
-    "POSTGRES_URL",
-    "postgresql://postgres:YOUR_PASSWORD@localhost:5432/request_bin",
-)
+from db.config import get_settings
 
 pool: asyncpg.Pool | None = None
 
-async def connect():
+
+async def connect() -> None:
     global pool
-    pool = await asyncpg.create_pool(
-        POSTGRES_URL,
+    if pool is not None:
+        return
+
+    settings = get_settings()
+    if not settings.postgres_url:
+        raise RuntimeError("POSTGRES_URL is required")
+
+    created_pool = await asyncpg.create_pool(
+        settings.postgres_url,
         min_size=1,
         max_size=10,
     )
+    pool = created_pool
+    try:
+        await ping()
+    except BaseException:
+        pool = None
+        await created_pool.close()
+        raise
 
-async def close():
+
+async def ping() -> None:
+    if pool is None:
+        raise RuntimeError("PostgreSQL pool is not connected")
+
+    async with pool.acquire() as connection:
+        await connection.execute("SELECT 1")
+
+
+async def close() -> None:
     global pool
-    if pool:
-        await pool.close()
+    current_pool = pool
+    pool = None
+    if current_pool is not None:
+        await current_pool.close()
 
-#  import os
-#   import asyncpg
+'''
 
-#   POSTGRES_URL = os.getenv(
-#       "POSTGRES_URL",
-#       "postgresql://postgres:YOUR_PASSWORD@localhost:5432/request_bin",
-#   )
+dataclass gives Settings a clear, typed structure:
 
+  Settings(
+      postgres_url=...,
+      mongodb_url=...,
+      mongodb_database=...,
+      host=...,
+      port=...,
+  )
 
+  It automatically provides initialization,
+  readable representation, and comparisons.
+  frozen=True makes the settings immutable
+  after creation, reducing accidental
+  configuration changes. slots=True keeps
+  instances lightweight and prevents
+  unexpected attributes.
 
+  @lru_cache(maxsize=1) ensures get_settings()
+  loads environment variables only once per
+  process. This means every module receives
+  the same settings snapshot instead of
+  repeatedly reading .env and environment
+  variables.
 
-# class Database:
+  It also means configuration changes require
+  an application restart. Tests can explicitly
+  reset it with:
 
-#     def __init__(self):
-#         self.database_url = os.getenv("DB_URL")
-#         self.pool = None
+  get_settings.cache_clear()
 
-#     # DELETE FOR PRODUCTION
-#     def log_query(self, statement, params):
-#         timestamp = datetime.now().strftime("%b %d %H:%M:%S")
-
-#         print(
-#             timestamp,
-#             statement,
-#             params
-#         )
-
-#     async def connect(self):
-#         self.pool = await asyncpg.create_pool(
-#             self.database_url,
-#             ssl=False
-#         )
-
-#         async with self.pool.acquire() as connection:
-#             await connection.execute("SELECT 1")
-
-#         print("Database connected")
-
-#     async def close(self):
-#         if self.pool:
-#             await self.pool.close()
-
-#     async def db_query(self, statement, *params):
-#         if not self.pool:
-#             raise Exception("Database not connected")
-
-#         self.log_query(statement, params)
-
-#         connection = await self.pool.acquire()
-
-#         try:
-#             result = await connection.fetch(
-#                 statement,
-#                 *params
-#             )
-
-#             return result
-
-#         except Exception as error:
-#             print(
-#                 "Database query error:",
-#                 error
-#             )
-
-#             raise
-
-#         finally:
-#             await self.pool.release(connection)
-
-#     async def get_client(self):
-#         if not self.pool:
-#             raise Exception("Database not connected")
-
-#         return await self.pool.acquire()
-
-#     async def begin_transaction(self, client):
-#         await client.execute("BEGIN")
-
-#     async def commit_transaction(self, client):
-#         await client.execute("COMMIT")
-#         await self.pool.release(client)
-
-#     async def rollback_transaction(self, client):
-#         await client.execute("ROLLBACK")
-#         await self.pool.release(client)
+  The cache is only for configuration.
+  PostgreSQL and MongoDB maintain their own
+  separate connection pools.
+'''

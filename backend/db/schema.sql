@@ -5,8 +5,8 @@ CREATE TABLE baskets (
   capacity   int         NOT NULL        DEFAULT 200 CHECK (capacity > 0 AND capacity <= 400),
   expires_at timestamptz NOT NULL        DEFAULT NOW() + INTERVAL '72 hours',
 
-  CONSTRAINT alphanumeric_name_only   CHECK(name ~ '^[A-Za-z0-9]+$' ),
-  CONSTRAINT basketcase_name_reserved CHECK(name <> 'basketcase')
+  CONSTRAINT alphanumeric_name_only CHECK(name ~ '^[A-Za-z0-9]+$' ),
+  CONSTRAINT baskets_name_reserved  CHECK(name <> 'baskets')
 );
 
 CREATE INDEX baskets_name_index ON baskets(name);
@@ -22,7 +22,7 @@ CREATE TABLE requests (
   method       http_method  NOT NULL,
   path         varchar(255) NOT NULL,
   headers      jsonb        NOT NULL DEFAULT jsonb_build_object(), -- Headers are case-insensitive; normalize case in application code!
-  query_params jsonb        NOT NULL DEFAULT jsonb_build_object(), 
+  query_params jsonb        NOT NULL DEFAULT jsonb_build_object(),
   body         text,
   received_at  timestamptz  NOT NULL DEFAULT NOW()
 );
