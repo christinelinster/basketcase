@@ -1,10 +1,5 @@
 fastapi
-hypercorn
-redis
+uvicorn[standard]
 python-dotenv
-slowapi
 asyncpg
 pymongo
-jinja2
-bcrypt
-httpx
