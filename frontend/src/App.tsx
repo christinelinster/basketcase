@@ -1,87 +1,53 @@
-import { useState, useEffect } from 'react';
-import Cooltest from './components/something';
-import './App.css';
-import axios from 'axios';
+import { useEffect, useState } from 'react';
+import type { Basket } from './types/basket';
+import { loadBaskets, saveBaskets } from './lib/mockData';
+import Nav from './components/Nav';
+import LandingPage from './components/LandingPage';
+import BasketDetailPage from './components/BasketDetailPage';
 
-
-
-// Define form event type
-interface FormEvent extends React.FormEvent<HTMLFormElement> {
-  currentTarget: HTMLFormElement;
+function getRoute(): string {
+  return (window.location.hash || '#/').replace(/^#\/?/, '');
 }
 
 function App() {
-  const [seeWorld, setTheWorld] = useState<string>('Nothing');
-
-  const contactServer = async (): Promise<any> => {
-    try {
-      let conn = await axios.get('/api');
-      setTheWorld(conn.data.success)
-    } catch (err) {
-      console.log('oops: ', err);
-    }
-  };
+  const [route, setRoute] = useState(getRoute());
+  const [baskets, setBaskets] = useState<Basket[]>([]);
 
   useEffect(() => {
-    void contactServer();
-  }, []); // Added empty dependency array to prevent infinite loops
+    setBaskets(loadBaskets());
+    const onHashChange = () => setRoute(getRoute());
+    window.addEventListener('hashchange', onHashChange);
+    return () => window.removeEventListener('hashchange', onHashChange);
+  }, []);
 
-const renderContent = async (): Promise<any> => {
-  try{
-  let res = await contactServer();
-  let theWords = res.data
-  setTheWorld(theWords) 
-  return theWords
-  } catch (err) {
-    console.log('oops: ', err)
-  }
-}
+  const handleCreate = (name: string) => {
+    setBaskets((prev) => {
+      if (prev.some((b) => b.name === name)) return prev;
+      const next = [{ name, created: Date.now() }, ...prev];
+      saveBaskets(next);
+      return next;
+    });
+    window.location.hash = `#/${name}`;
+  };
+
+  const handleDelete = () => {
+    setBaskets((prev) => {
+      const next = prev.filter((b) => b.name !== route);
+      saveBaskets(next);
+      return next;
+    });
+    window.location.hash = '#/';
+  };
 
   return (
-    <>
-      <section id="center" className="note">
-        <div className="hero">
-        </div>
-        <div>
-          { seeWorld }
-        </div>
-      </section>
-
-      <div className="ticks"></div>
-
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
-          </svg>
-          <h2>Documentation</h2>
-          <p>Your questions, answered</p>
-          <ul>
-            <li>
-              No questions?
-            </li>
-            <li>
-              Great
-            </li>
-          </ul>
-        </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
-          </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Very Cool community</p>
-          <ul>
-            <li>
-              Say JuiceBeetle three times, might work
-            </li>
-          </ul>
-        </div>
-      </section>
-
-      <div className="ticks"></div>
-      <section id="spacer"></section>
-    </>
+    <div style={{ minHeight: '100vh', background: 'var(--color-bg)', color: 'var(--color-text)', display: 'flex', flexDirection: 'column' }}>
+      <Nav />
+      {route ? (
+        <BasketDetailPage name={route} onDelete={handleDelete} />
+      ) : (
+        <LandingPage baskets={baskets} onCreate={handleCreate} />
+      )}
+    </div>
   );
 }
 
