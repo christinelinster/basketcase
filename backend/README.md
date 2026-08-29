@@ -50,6 +50,24 @@ Expected response:
 {"message":"hello world"}
 ```
 
+The Vite proxy targets port `8000`. If your local `.env` overrides `PORT`, set
+it to `8000` for this workflow or update the proxy target in
+`frontend/vite.config.ts` to the same port.
+
+## Verify the frontend connection
+
+With the backend running, start the Vite development server in a second
+terminal:
+
+```bash
+cd frontend
+npm run dev
+```
+
+Open `http://127.0.0.1:5173`. The page should show the default Vite counter
+and the `hello world` message returned by the backend through the Vite `/api`
+proxy.
+
 ## Run tests
 
 ```bash
