@@ -4,7 +4,7 @@ load_dotenv()
 
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
-from routers import webhooks, baskets
+from routers import interface, webhooks
 from db import postgres
 
 import os
@@ -19,6 +19,5 @@ app = FastAPI(lifespan=lifespan)
 PORT = int(os.getenv("PORT", 3000))
 HOST = "0.0.0.0"
 
+app.include_router(interface.router)
 app.include_router(webhooks.router)
-app.include_router(baskets.router)
-
