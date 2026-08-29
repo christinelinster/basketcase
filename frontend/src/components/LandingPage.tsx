@@ -1,10 +1,9 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import type { Basket } from '../types/basket';
-import { ago, makeToken } from '../lib/mockData';
+import { makeToken } from '../lib/token';
 
 interface LandingPageProps {
-  baskets: Basket[];
+  baskets: string[];
   onCreate: (name: string) => void;
 }
 
@@ -68,9 +67,6 @@ function LandingPage({ baskets, onCreate }: LandingPageProps) {
             Create
           </button>
         </form>
-        <div className="text-muted" style={{ fontSize: 11, marginTop: 12 }}>
-          Tokens are 7 alphanumeric characters. Edit it or keep the generated one.
-        </div>
       </section>
 
       <aside className="card elev-sm" style={{ padding: 0, gap: 0, overflow: 'hidden' }}>
@@ -81,10 +77,10 @@ function LandingPage({ baskets, onCreate }: LandingPageProps) {
           </span>
         </div>
         <div style={{ maxHeight: 340, overflowY: 'auto', padding: '0 8px 10px' }}>
-          {baskets.map((b) => (
+          {baskets.map(name => (
             <Link
-              key={b.name}
-              to={`/baskets/${b.name}`}
+              key={name}
+              to={`/baskets/${name}`}
               className="mono bskt"
               style={{
                 display: 'flex',
@@ -98,10 +94,7 @@ function LandingPage({ baskets, onCreate }: LandingPageProps) {
                 fontSize: 13,
               }}
             >
-              <span>{b.name}</span>
-              <span className="text-muted" style={{ fontSize: 11 }}>
-                {ago(b.created)}
-              </span>
+              <span>{name}</span>
             </Link>
           ))}
           {!baskets.length && (
