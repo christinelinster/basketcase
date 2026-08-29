@@ -2,41 +2,45 @@
 // >> React
 import { useEffect, useState } from 'react';
 // >> Router
-import { Routes, Route, useParams, useNavigate } from 'react-router-dom';
+import { Routes, Route, useNavigate } from 'react-router-dom';
 // >> Components
 import Nav         from './components/Nav';
 import LandingPage from './components/LandingPage';
 import BasketPage  from './components/BasketPage';
-// >> Types
-import type { Basket }  from './types/basket';
-
-// Temporary mock data while backend is stubbed:
-import { loadBaskets, saveBaskets }                from './lib/mockData';
+// >> Services
+import BasketService from './services/BasketService';
+  
+// LocalStorage
+const LS_BASKET_PREFIX = 'basket_'
+const stripBasketPrefix = (name: string) => name.slice(LS_BASKET_PREFIX.length)
+const addBasketPrefix   = (name: string) => `${LS_BASKET_PREFIX}${name}`
 
 function App() {
-  const [baskets, setBaskets] = useState<Basket[]>([]);
+  const [ baskets, setBaskets ] = useState<string[]>([]); // Array of Basket names
   const navigate = useNavigate();
 
+  // Load baskets from localStorage on initial render. Note that localStorage can only store data as strings:
+  // > localStorage { basket_<name1>: <token1>, basket_<name2>: <token2>, ... }
   useEffect(() => {
-    setBaskets(loadBaskets());
-  }, []);
+    const basketNames = Object.keys(localStorage)
+      .filter(key => key.startsWith(LS_BASKET_PREFIX))
+      .map(stripBasketPrefix)
 
-  const handleCreate = (name: string) => {
-    setBaskets((prev) => {
-      if (prev.some((b) => b.name === name)) return prev;
-      const next = [{ name, created: Date.now() }, ...prev];
-      saveBaskets(next);
-      return next;
-    });
-    navigate(`/baskets/${name}`);
+    setBaskets(basketNames)
+  }, [])
+
+  const handleCreateBasket = async (name: string) => {
+    const newBasket = await BasketService.createBasket(name) // STUBBED
+    setBaskets(baskets.concat(newBasket.name))
+    localStorage.setItem(addBasketPrefix(name), newBasket.token)
+    // Display popup confirmation -> Show basket URL, token, and option to navigate to basket.
   };
 
-  const handleDelete = (name: string) => {
-    setBaskets((prev) => {
-      const next = prev.filter((b) => b.name !== name);
-      saveBaskets(next);
-      return next;
-    });
+  const handleDeleteBasket = async (name: string) => {
+    await BasketService.deleteBasket(name)  // STUBBED
+    setBaskets(baskets.filter(bName => bName !== name))
+    localStorage.removeItem(addBasketPrefix(name))
+
     navigate('/');
   };
 
@@ -45,19 +49,15 @@ function App() {
       <Nav />
       <Routes>
         <Route path="/" 
-          element={<LandingPage baskets={baskets} onCreate={handleCreate} />} 
+          element={<LandingPage baskets={baskets} onCreate={handleCreateBasket} />} 
         />
 
         <Route path="/baskets/:name" 
-        element={<BasketDetailRoute onDelete={handleDelete} />} />
+          element={<BasketPage onDelete={handleDeleteBasket} />}
+        />
       </Routes>
     </div>
   );
-}
-
-function BasketDetailRoute({ onDelete }: { onDelete: (name: string) => void }) {
-  const { name = '' } = useParams();
-  return <BasketPage name={name} onDelete={() => onDelete(name)} />;
 }
 
 export default App;

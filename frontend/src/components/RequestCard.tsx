@@ -1,10 +1,19 @@
 import { Fragment, useState } from 'react';
-import type { CapturedRequest } from '../types/basket';
-import { ago, fmtTime } from '../lib/mockData';
+import type { BasketRequestResponse } from '../types/basket';
+import { ago, fmtTime } from '../lib/format';
 import RequestSection from './RequestSection';
 
+const METHOD_COLORS: Record<string, { fg: string; bg: string }> = {
+  GET: { fg: '#8fd0bd', bg: 'rgba(143,208,189,0.14)' },
+  POST: { fg: '#95b4e6', bg: 'rgba(149,180,230,0.15)' },
+  PUT: { fg: '#b5abfc', bg: 'rgba(181,171,252,0.15)' },
+  PATCH: { fg: '#cfd3e5', bg: 'rgba(207,211,229,0.12)' },
+  DELETE: { fg: '#d99a9a', bg: 'rgba(217,154,154,0.14)' },
+};
+const DEFAULT_METHOD_COLOR = { fg: '#c9c9c9', bg: 'rgba(201,201,201,0.12)' };
+
 interface RequestCardProps {
-  request: CapturedRequest;
+  request: BasketRequestResponse;
 }
 
 function RequestCard({ request }: RequestCardProps) {
@@ -13,9 +22,13 @@ function RequestCard({ request }: RequestCardProps) {
 
   const toggle = (key: string) => setOpen((o) => ({ ...o, [key]: !o[key] }));
 
-  const query = request.query
-    ? request.query.split('&').map((p) => ({ k: p.split('=')[0], v: p.split('=').slice(1).join('=') }))
-    : [];
+  const { fg, bg } = METHOD_COLORS[request.method] ?? DEFAULT_METHOD_COLOR;
+  const receivedAtMs = new Date(request.received_at).getTime();
+
+  const query = Object.entries(request.query_params).map(([k, v]) => ({ k, v }));
+
+  const contentTypeEntry = Object.entries(request.headers).find(([k]) => k.toLowerCase() === 'content-type');
+  const contentType = contentTypeEntry ? contentTypeEntry[1] : 'none';
 
   let bodyText = request.body || '— empty —';
   if (pretty && request.body) {
@@ -26,7 +39,7 @@ function RequestCard({ request }: RequestCardProps) {
     }
   }
 
-  const path = request.query ? `${request.path}?${request.query}` : request.path;
+  const path = query.length > 0 ? `${request.path}?${new URLSearchParams(request.query_params).toString()}` : request.path;
 
   return (
     <article className="card elev-sm" style={{ padding: 0, gap: 0, overflow: 'hidden' }}>
@@ -39,17 +52,17 @@ function RequestCard({ request }: RequestCardProps) {
             letterSpacing: '0.06em',
             padding: '3px 8px',
             borderRadius: 4,
-            color: request.fg,
-            background: request.bg,
+            color: fg,
+            background: bg,
           }}
         >
           {request.method}
         </span>
         <span className="mono text-muted" style={{ fontSize: 12 }}>
-          {fmtTime(request.ts)}
+          {fmtTime(receivedAtMs)}
         </span>
         <span className="text-muted" style={{ fontSize: 11, marginLeft: 'auto' }}>
-          {ago(request.ts)}
+          {ago(receivedAtMs)}
         </span>
       </div>
       <div
@@ -68,9 +81,9 @@ function RequestCard({ request }: RequestCardProps) {
         {path}
       </div>
 
-      <RequestSection label="Headers" count={String(request.headers.length)} open={!!open.headers} onToggle={() => toggle('headers')}>
+      <RequestSection label="Headers" count={String(Object.keys(request.headers).length)} open={!!open.headers} onToggle={() => toggle('headers')}>
         <div style={{ display: 'grid', gridTemplateColumns: 'minmax(120px,220px) minmax(0,1fr)', gap: '2px 16px' }}>
-          {request.headers.map(([k, v], i) => (
+          {Object.entries(request.headers).map(([k, v], i) => (
             <Fragment key={i}>
               <div className="mono text-muted" style={{ fontSize: 12, padding: '3px 0' }}>
                 {k}
@@ -110,7 +123,7 @@ function RequestCard({ request }: RequestCardProps) {
               {pretty ? 'Raw Content' : 'Format Content'}
             </button>
             <span className="text-muted mono" style={{ fontSize: 11 }}>
-              {request.contentType}
+              {contentType}
             </span>
           </div>
           <pre

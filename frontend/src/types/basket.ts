@@ -1,17 +1,16 @@
-export interface Basket {
-  name: string;
-  created: number;
+export interface BasketRequestResponse {
+  id: number;
+  method: string;
+  path: string;
+  headers: Record<string, string>;
+  query_params: Record<string, string>;
+  body: string | null;
+  received_at: string;
 }
 
-export interface CapturedRequest {
-  id: string;
-  method: string;
-  fg: string;
-  bg: string;
-  ts: number;
-  path: string;
-  query: string;
-  headers: [string, string][];
-  body: string;
-  contentType: string;
+export interface BasketDetailResponse {
+  name: string;
+  capacity: number;
+  expires_at: string;
+  requests: BasketRequestResponse[];
 }

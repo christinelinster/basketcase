@@ -1,36 +1,30 @@
 // >> React
 import { useEffect, useRef, useState } from 'react';
+import { useParams } from 'react-router-dom';
 // > Components
 import RequestCard from './RequestCard';
 // > Types
-import type { CapturedRequest } from '../types/basket';
-
-import { makeRequest, seedRequests } from '../lib/mockData';
-
-const RECENT_LIMIT = 10;
+import type { BasketRequestResponse } from '../types/basket';
+// > Services
+import RequestService from '../services/RequestService';
 
 interface BasketPageProps {
-  name: string,
-  onDelete: () => void;
+  onDelete: (name: string) => void;
 }
 
-function BasketPage({ name, onDelete }: BasketPageProps) {
+function BasketPage({ onDelete }: BasketPageProps) {
+  const { name } = useParams()
 
-  const [requests, setRequests] = useState<CapturedRequest[]>([]);
-  const [total, setTotal] = useState(0);
+  const [requests, setRequests] = useState<BasketRequestResponse[]>([]);
   const [auto, setAuto] = useState(false);
   const [copied, setCopied] = useState('');
-  const seq = useRef(0);
   const timer = useRef<number | null>(null);
   const copyTimer = useRef<number | null>(null);
 
   if (name === undefined) return
 
   useEffect(() => {
-    const seeds = seedRequests(name, RECENT_LIMIT);
-    setRequests(seeds.list);
-    setTotal(seeds.total);
-    seq.current = 0;
+    RequestService.loadBasketDetails(name).then((detail) => setRequests(detail.requests));
     return () => {
       if (timer.current) window.clearInterval(timer.current);
       timer.current = null;
@@ -48,11 +42,7 @@ function BasketPage({ name, onDelete }: BasketPageProps) {
   };
 
   const pushRequest = () => {
-    seq.current += 1;
-    const rand = Math.random;
-    const req = makeRequest(rand, Date.now(), seq.current + 100);
-    setRequests((r) => [req, ...r].slice(0, RECENT_LIMIT));
-    setTotal((t) => t + 1);
+    RequestService.loadBasketDetails(name).then((detail) => setRequests(detail.requests));
   };
 
   const toggleAuto = () => {
@@ -66,7 +56,7 @@ function BasketPage({ name, onDelete }: BasketPageProps) {
     }
   };
 
-  const countLabel = `Requests: ${requests.length} (${total})`;
+  const countLabel = `Requests: ${requests.length}`;
   const autoStyle = auto ? { color: 'var(--color-accent)', borderColor: 'var(--color-accent)' } : {};
 
   return (
@@ -108,7 +98,7 @@ function BasketPage({ name, onDelete }: BasketPageProps) {
               <path d="M137.54 186.36a8 8 0 010 11.31l-9.94 9.94a56 56 0 01-79.2-79.2l24.12-24.12a56 56 0 0176.81-2.28 8 8 0 01-10.64 12 40 40 0 00-54.85 1.63L59.72 139.7a40 40 0 0056.57 56.57l9.93-9.94a8 8 0 0111.32.03zm70.06-138a56.06 56.06 0 00-79.2 0l-9.94 9.95a8 8 0 0011.32 11.31l9.94-9.93a40 40 0 0156.56 56.56l-24.12 24.12a40 40 0 01-54.85 1.6a8 8 0 00-10.63 12 56 56 0 0076.8-2.26l24.12-24.12a56.08 56.08 0 000-79.2z" />
             </svg>
           </button>
-          <button className="btn btn-secondary btn-icon" onClick={onDelete} title="Delete basket" style={{ color: '#d99a9a' }}>
+          <button className="btn btn-secondary btn-icon" onClick={() => onDelete(name)} title="Delete basket" style={{ color: '#d99a9a' }}>
             <svg width="17" height="17" viewBox="0 0 256 256" fill="currentColor">
               <path d="M216 48h-40v-8a24 24 0 00-24-24h-48a24 24 0 00-24 24v8H40a8 8 0 000 16h8v144a16 16 0 0016 16h128a16 16 0 0016-16V64h8a8 8 0 000-16zM96 40a8 8 0 018-8h48a8 8 0 018 8v8H96zm96 168H64V64h128zm-80-104v64a8 8 0 01-16 0v-64a8 8 0 0116 0zm48 0v64a8 8 0 01-16 0v-64a8 8 0 0116 0z" />
             </svg>
