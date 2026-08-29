@@ -22,7 +22,7 @@ CREATE TABLE requests (
   method       http_method  NOT NULL,
   path         varchar(255) NOT NULL,
   headers      jsonb        NOT NULL DEFAULT jsonb_build_object(), -- Headers are case-insensitive; normalize case in application code!
-  query_params jsonb        NOT NULL DEFAULT jsonb_build_object(), 
+  query_params jsonb        NOT NULL DEFAULT jsonb_build_object(),
   body         text,
   received_at  timestamptz  NOT NULL DEFAULT NOW()
 );

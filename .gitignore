@@ -40,3 +40,9 @@ dist-ssr/
 *.pyd
 .pytest_cache/
 .mypy_cache/
+
+# Agent rules
+AGENTS.md
+
+# Tests
+tests/
