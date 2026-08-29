@@ -5,8 +5,8 @@ CREATE TABLE baskets (
   capacity   int         NOT NULL        DEFAULT 200 CHECK (capacity > 0 AND capacity <= 400),
   expires_at timestamptz NOT NULL        DEFAULT NOW() + INTERVAL '72 hours',
 
-  CONSTRAINT alphanumeric_name_only   CHECK(name ~ '^[A-Za-z0-9]+$' ),
-  CONSTRAINT basketcase_name_reserved CHECK(name <> 'basketcase')
+  CONSTRAINT alphanumeric_name_only CHECK(name ~ '^[A-Za-z0-9]+$' ),
+  CONSTRAINT baskets_name_reserved  CHECK(name <> 'baskets')
 );
 
 CREATE INDEX baskets_name_index ON baskets(name);
