@@ -1,4 +1,4 @@
-# Load environment variables
+
 from dotenv import load_dotenv
 load_dotenv()
 
@@ -6,7 +6,6 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from routers import webhooks, baskets
 from db import postgres
-# from pydantic import BaseModel
 
 import os
 
@@ -22,3 +21,4 @@ HOST = "0.0.0.0"
 
 app.include_router(webhooks.router)
 app.include_router(baskets.router)
+
