@@ -1,23 +1,24 @@
+// Imports:
+// >> React
 import { useEffect, useState } from 'react';
-import type { Basket } from './types/basket';
-import { loadBaskets, saveBaskets } from './lib/mockData';
-import Nav from './components/Nav';
+// >> Router
+import { Routes, Route, useParams, useNavigate } from 'react-router-dom';
+// >> Components
+import Nav         from './components/Nav';
 import LandingPage from './components/LandingPage';
-import BasketDetailPage from './components/BasketDetailPage';
+import BasketPage  from './components/BasketPage';
+// >> Types
+import type { Basket }  from './types/basket';
 
-function getRoute(): string {
-  return (window.location.hash || '#/').replace(/^#\/?/, '');
-}
+// Temporary mock data while backend is stubbed:
+import { loadBaskets, saveBaskets }                from './lib/mockData';
 
 function App() {
-  const [route, setRoute] = useState(getRoute());
   const [baskets, setBaskets] = useState<Basket[]>([]);
+  const navigate = useNavigate();
 
   useEffect(() => {
     setBaskets(loadBaskets());
-    const onHashChange = () => setRoute(getRoute());
-    window.addEventListener('hashchange', onHashChange);
-    return () => window.removeEventListener('hashchange', onHashChange);
   }, []);
 
   const handleCreate = (name: string) => {
@@ -27,28 +28,36 @@ function App() {
       saveBaskets(next);
       return next;
     });
-    window.location.hash = `#/${name}`;
+    navigate(`/baskets/${name}`);
   };
 
-  const handleDelete = () => {
+  const handleDelete = (name: string) => {
     setBaskets((prev) => {
-      const next = prev.filter((b) => b.name !== route);
+      const next = prev.filter((b) => b.name !== name);
       saveBaskets(next);
       return next;
     });
-    window.location.hash = '#/';
+    navigate('/');
   };
 
   return (
     <div style={{ minHeight: '100vh', background: 'var(--color-bg)', color: 'var(--color-text)', display: 'flex', flexDirection: 'column' }}>
       <Nav />
-      {route ? (
-        <BasketDetailPage name={route} onDelete={handleDelete} />
-      ) : (
-        <LandingPage baskets={baskets} onCreate={handleCreate} />
-      )}
+      <Routes>
+        <Route path="/" 
+          element={<LandingPage baskets={baskets} onCreate={handleCreate} />} 
+        />
+
+        <Route path="/baskets/:name" 
+        element={<BasketDetailRoute onDelete={handleDelete} />} />
+      </Routes>
     </div>
   );
+}
+
+function BasketDetailRoute({ onDelete }: { onDelete: (name: string) => void }) {
+  const { name = '' } = useParams();
+  return <BasketPage name={name} onDelete={() => onDelete(name)} />;
 }
 
 export default App;

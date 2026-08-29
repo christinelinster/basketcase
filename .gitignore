@@ -46,3 +46,6 @@ AGENTS.md
 
 # Tests
 tests/
+
+# Claude
+.claude/
