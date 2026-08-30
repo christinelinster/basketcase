@@ -1,6 +1,7 @@
-from fastapi import APIRouter, status
+from fastapi           import APIRouter, status, Response, Header, HTTPException
 from fastapi.responses import JSONResponse
-
+from db                import postgres, mongo
+import uuid
 
 router = APIRouter(prefix="/api")
 
@@ -32,18 +33,8 @@ async def get_basket(name: str) -> JSONResponse:
     return not_implemented()
 
 
-@router.delete("/baskets/{name}")
-async def delete_basket(name: str) -> JSONResponse:
-    return not_implemented()
-
-
 @router.get("/baskets/{name}/requests")
 async def list_requests(name: str) -> JSONResponse:
-    return not_implemented()
-
-
-@router.delete("/baskets/{name}/requests")
-async def delete_requests(name: str) -> JSONResponse:
     return not_implemented()
 
 
@@ -52,6 +43,111 @@ async def get_request(name: str, request_id: str) -> JSONResponse:
     return not_implemented()
 
 
-@router.delete("/baskets/{name}/requests/{request_id}")
-async def delete_request(name: str, request_id: str) -> JSONResponse:
-    return not_implemented()
+# ---------------------------------------------------------------------------
+# Delete Routes
+# - X-Basket-Token represents the per-basket token used for authentication,
+#   from localStorage.
+# - All failures return 404 with identical messages to obscure basket existence
+#   from bad actors.
+# ---------------------------------------------------------------------------
+
+@router.delete("/baskets/{name}")
+async def delete_basket(name: str, x_basket_token: str | None = Header(None, alias="X-Basket-Token")) -> Response:
+    """Delete a basket by name and token, and associated requests via cascade."""
+    try:
+        token = uuid.UUID(x_basket_token)
+    except (ValueError, TypeError):
+        raise HTTPException(status_code=404, detail="Basket not found")
+
+    async with postgres.pool.acquire() as connection:
+        deleted = await connection.fetchrow(
+            """
+            DELETE FROM baskets
+            WHERE name = $1 AND token = $2
+            RETURNING id
+            """,
+            name,
+            token
+        )
+
+    if deleted is None:
+        raise HTTPException(status_code=404, detail="Basket not found")
+
+    return Response(status_code=204)
+
+
+@router.delete('/baskets/{name}/requests/{request_id:int}', status_code=204)
+async def delete_request(name: str, request_id: int, x_basket_token: str | None = Header(None, alias="X-Basket-Token")):
+    """Delete one specific request from a basket by request ID."""
+
+    try:
+        token = uuid.UUID(x_basket_token)
+    except (ValueError, TypeError):
+        raise HTTPException(status_code=404, detail="Request not found")
+
+    MAX_POSTGRES_INT = 2147483647
+    if request_id > MAX_POSTGRES_INT:
+        raise HTTPException(status_code=404, detail="Request not found")
+
+    async with postgres.pool.acquire() as connection:
+        basket = await connection.fetchrow(
+            """
+            SELECT id
+            FROM baskets
+            WHERE name = $1 AND token = $2
+            """,
+            name,
+            token
+        )
+
+        if basket is None:
+            raise HTTPException(status_code=404, detail="Request not found")
+
+        # Ensure that DELETE can only remove a request in the identifying token's basket.
+        deleted = await connection.fetchrow(
+            """
+            DELETE FROM requests
+            WHERE id = $1 AND basket_id = $2
+            RETURNING id
+            """,
+            request_id,
+            basket["id"]
+        )
+
+    if deleted is None:
+        raise HTTPException(status_code=404, detail="Request not found")
+
+    return Response(status_code=204)
+
+
+@router.delete('/baskets/{name}/requests', status_code=204)
+async def delete_all_requests(name: str, x_basket_token: str | None = Header(None, alias="X-Basket-Token")):
+    """Delete every request inside a basket without deleting the basket itself."""
+    try:
+        token = uuid.UUID(x_basket_token)
+    except (ValueError, TypeError):
+        raise HTTPException(status_code=404, detail="Basket not found")
+
+    async with postgres.pool.acquire() as connection:
+        basket = await connection.fetchrow(
+            """
+            SELECT id
+            FROM baskets
+            WHERE name = $1 AND token = $2
+            """,
+            name,
+            token
+        )
+
+        if basket is None:
+            raise HTTPException(status_code=404, detail="Basket not found")
+
+        await connection.execute(
+            """
+            DELETE FROM requests
+            WHERE basket_id = $1
+            """,
+            basket["id"]
+        )
+
+    return Response(status_code=204)
