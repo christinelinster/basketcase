@@ -1,23 +1,24 @@
 // >> React
 import { useEffect, useRef, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 // > Components
 import RequestCard from './RequestCard';
 // > Types
-import type { BasketRequestResponse } from '../types/basket';
+import type { BasketRequest } from '../types/basket';
 // > Services
-import RequestService from '../services/RequestService';
+import BasketService from '../services/BasketService';
 
 interface BasketPageProps {
   onDelete: (name: string) => void;
 }
 
 function BasketPage({ onDelete }: BasketPageProps) {
-  const { name } = useParams()
-
-  const [requests, setRequests] = useState<BasketRequestResponse[]>([]);
-  const [auto, setAuto] = useState(false);
-  const [copied, setCopied] = useState('');
+  const navigate = useNavigate()
+  // State:
+  const [ requests, setRequests ] = useState<BasketRequest[]>([]);
+  
+  // - Toggle auto-refresh
+  const [ auto, setAuto ] = useState(false);
   const timer = useRef<number | null>(null);
   const copyTimer = useRef<number | null>(null);
 
