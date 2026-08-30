@@ -89,7 +89,7 @@ async def create_basket(
                 """
                 INSERT INTO baskets (name)
                 VALUES ($1)
-                RETURNING id, name, token, capacity expires_at
+                RETURNING id, name, token, capacity, expires_at
                 """,
                 basket.name,
             )
