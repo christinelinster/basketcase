@@ -6,7 +6,7 @@ CREATE TABLE baskets (
   expires_at timestamptz NOT NULL        DEFAULT NOW() + INTERVAL '72 hours',
 
   CONSTRAINT alphanumeric_name_only CHECK(name ~ '^[A-Za-z0-9]+$' ),
-  CONSTRAINT baskets_name_reserved  CHECK(name <> 'baskets')
+  CONSTRAINT baskets_name_reserved  CHECK(lower(name) <> 'baskets')
 );
 
 CREATE INDEX baskets_name_index ON baskets(name);
