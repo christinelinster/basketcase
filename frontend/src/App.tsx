@@ -2,7 +2,7 @@
 // >> React
 import { useEffect, useState } from 'react';
 // >> Router
-import { Routes, Route, useNavigate } from 'react-router-dom';
+import { Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 // >> Components
 import Nav         from './components/Nav';
 import LandingPage from './components/LandingPage';
@@ -41,14 +41,16 @@ function App() {
     setBaskets(baskets.filter(bName => bName !== name))
     localStorage.removeItem(addBasketPrefix(name))
 
-    navigate('/');
+    navigate('/baskets');
   };
 
   return (
     <div style={{ minHeight: '100vh', background: 'var(--color-bg)', color: 'var(--color-text)', display: 'flex', flexDirection: 'column' }}>
       <Nav />
       <Routes>
-        <Route path="/" 
+        <Route path="/" element={<Navigate to="/baskets" replace />} />
+        
+        <Route path="/baskets" 
           element={<LandingPage baskets={baskets} onCreate={handleCreateBasket} />} 
         />
 
