@@ -1,5 +1,5 @@
 import { Fragment, useState } from 'react';
-import type { BasketRequestResponse } from '../types/basket';
+import type { BasketRequest } from '../types/basket';
 import { ago, fmtTime } from '../lib/format';
 import RequestSection from './RequestSection';
 
@@ -13,7 +13,7 @@ const METHOD_COLORS: Record<string, { fg: string; bg: string }> = {
 const DEFAULT_METHOD_COLOR = { fg: '#c9c9c9', bg: 'rgba(201,201,201,0.12)' };
 
 interface RequestCardProps {
-  request: BasketRequestResponse;
+  request: BasketRequest;
 }
 
 function RequestCard({ request }: RequestCardProps) {

@@ -1,4 +1,4 @@
-export interface BasketRequestResponse {
+export interface BasketRequest {
   id: number;
   method: string;
   path: string;
@@ -8,9 +8,9 @@ export interface BasketRequestResponse {
   received_at: string;
 }
 
-export interface BasketDetailResponse {
+export interface Basket {
   name: string;
   capacity: number;
   expires_at: string;
-  requests: BasketRequestResponse[];
+  requests: BasketRequest[];
 }
