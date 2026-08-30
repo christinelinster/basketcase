@@ -20,41 +20,65 @@ function BasketPage({ onDelete }: BasketPageProps) {
   // - Toggle auto-refresh
   const [ auto, setAuto ] = useState(false);
   const timer = useRef<number | null>(null);
+  
+  // - Click-to-copy
+  const [ copied, setCopied ] = useState('');
   const copyTimer = useRef<number | null>(null);
+  // --------------------------------------------------------------
+  // 1) Extract :name from URL:
+  const { name } = useParams()
 
-  if (name === undefined) return
-
+  // 2) Load basket & request details:
   useEffect(() => {
-    RequestService.loadBasketDetails(name).then((detail) => setRequests(detail.requests));
-    return () => {
-      if (timer.current) window.clearInterval(timer.current);
-      timer.current = null;
-      setAuto(false);
-    };
+    if (name === undefined) {
+      navigate('/baskets', { replace: true })
+      return
+    }
+
+    const loadBasketDetails = async () => {
+      try {
+        const basket = await BasketService.loadBasketDetails(name)
+        setRequests(basket.requests)
+      } catch (error) {
+        console.error(error)
+        alert(`Basket ${name} not found.`)
+        navigate('/baskets', { replace: true })
+      }
+    }
+
+    loadBasketDetails();
+
+    // Stop auto-refresh timer when the basket changes:
+    return stopTimer
   }, [name]);
 
-  const url = `https://basketcase.com/${name}`;
+  if (name === undefined) return null
 
+  // Manual Refresh:  
+  const refreshRequests = async () => {
+    const requests = await BasketService.loadBasketRequests(name)
+    setRequests(requests)
+  }
+
+  // Auto-Refresh:
+  const toggleAuto = () => timer.current ? stopTimer() : startTimer()
+  const startTimer = () => {
+    timer.current = setInterval(refreshRequests, 2500);
+    setAuto(true);
+  }
+  const stopTimer = () => {
+    if (timer.current) clearInterval(timer.current);
+    timer.current = null;
+    setAuto(false);
+  }
+
+  // Click-to-Copy:
+  const url = `https://basketcase.com/${name}`;
   const copy = (text: string, label: string) => {
     if (navigator.clipboard) navigator.clipboard.writeText(text).catch(() => {});
     setCopied(label);
-    if (copyTimer.current) window.clearTimeout(copyTimer.current);
-    copyTimer.current = window.setTimeout(() => setCopied(''), 1600);
-  };
-
-  const pushRequest = () => {
-    RequestService.loadBasketDetails(name).then((detail) => setRequests(detail.requests));
-  };
-
-  const toggleAuto = () => {
-    if (timer.current) {
-      window.clearInterval(timer.current);
-      timer.current = null;
-      setAuto(false);
-    } else {
-      timer.current = window.setInterval(pushRequest, 2500);
-      setAuto(true);
-    }
+    if (copyTimer.current) clearTimeout(copyTimer.current);
+    copyTimer.current = setTimeout(() => setCopied(''), 1600);
   };
 
   const countLabel = `Requests: ${requests.length}`;
@@ -84,7 +108,7 @@ function BasketPage({ onDelete }: BasketPageProps) {
           </div>
         </div>
         <div style={{ display: 'flex', gap: 6 }}>
-          <button className="btn btn-secondary btn-icon" onClick={pushRequest} title="Refresh">
+          <button className="btn btn-secondary btn-icon" onClick={refreshRequests} title="Refresh">
             <svg width="17" height="17" viewBox="0 0 256 256" fill="currentColor">
               <path d="M240 56v48a8 8 0 01-8 8h-48a8 8 0 010-16h28.69L182.06 73.37a79.56 79.56 0 00-56.13-23.37h-.45A79.52 79.52 0 0069.59 73a8 8 0 01-11.18-11.44 96 96 0 01135 .79L224 84.69V56a8 8 0 0116 0zm-53.59 126A80 80 0 0173.94 182.63L51.31 160H80a8 8 0 000-16H32a8 8 0 00-8 8v48a8 8 0 0016 0v-28.69l22.63 22.63A95.4 95.4 0 00128 222h.53a95.36 95.36 0 0069.06-28.55A8 8 0 00186.41 182z" />
             </svg>
