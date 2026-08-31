@@ -4,7 +4,7 @@ from typing import Any
 from uuid import UUID
 
 import asyncpg
-from fastapi import APIRouter, HTTPException, Request, status
+from fastapi import APIRouter, Header, Request, Response, status, HTTPException
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field, field_validator
 
@@ -206,7 +206,7 @@ async def get_request(name: str, request_id: str) -> JSONResponse:
 async def delete_basket(name: str, x_basket_token: str | None = Header(None, alias="X-Basket-Token")) -> Response:
     """Delete a basket by name and token, and associated requests via cascade."""
     try:
-        token = uuid.UUID(x_basket_token)
+        token = UUID(x_basket_token)
     except (ValueError, TypeError):
         raise HTTPException(status_code=404, detail="Basket not found")
 
@@ -232,7 +232,7 @@ async def delete_request(name: str, request_id: int, x_basket_token: str | None 
     """Delete one specific request from a basket by request ID."""
 
     try:
-        token = uuid.UUID(x_basket_token)
+        token = UUID(x_basket_token)
     except (ValueError, TypeError):
         raise HTTPException(status_code=404, detail="Request not found")
 
@@ -275,7 +275,7 @@ async def delete_request(name: str, request_id: int, x_basket_token: str | None 
 async def delete_all_requests(name: str, x_basket_token: str | None = Header(None, alias="X-Basket-Token")):
     """Delete every request inside a basket without deleting the basket itself."""
     try:
-        token = uuid.UUID(x_basket_token)
+        token = UUID(x_basket_token)
     except (ValueError, TypeError):
         raise HTTPException(status_code=404, detail="Basket not found")
 
