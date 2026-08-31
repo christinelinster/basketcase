@@ -19,6 +19,7 @@ async def connect() -> None:
 
     created_client = AsyncMongoClient(
         settings.mongodb_url,
+        uuidRepresentation="standard",
         minPoolSize=1,
         maxPoolSize=10,
     )
