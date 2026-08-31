@@ -60,7 +60,7 @@ function BasketPage({ onDelete }: BasketPageProps) {
     setRequests(requests)
   }
 
-  // Auto-Refresh:
+  // Auto-Refresh. Note that this will ping the DB every 2.5s; to be replaced with WebSockets/SSE implementation.
   const toggleAuto = () => timer.current ? stopTimer() : startTimer()
   const startTimer = () => {
     timer.current = setInterval(refreshRequests, 2500);
@@ -84,16 +84,26 @@ function BasketPage({ onDelete }: BasketPageProps) {
   const countLabel = `Requests: ${requests.length}`;
   const autoStyle = auto ? { color: 'var(--color-accent)', borderColor: 'var(--color-accent)' } : {};
 
+  // Styles
+  const spotlightURLStyle = {
+    fontSize: 15, padding: '10px 16px', borderRadius: 'var(--radius-md)',
+    background: 'var(--color-bg)', color: 'var(--color-accent-200)',
+    boxShadow: 'inset 0 0 0 1px var(--color-accent-800)',
+  }
+
   return (
     <main style={{ flex: 1, padding: '28px 28px 72px', maxWidth: 1080, width: '100%', margin: '0 auto' }}>
+      {/* Basket Header */}
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: 16, flexWrap: 'wrap' }}>
         <div style={{ flex: 1, minWidth: 0 }}>
+
           <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, flexWrap: 'wrap' }}>
             <h4 style={{ margin: 0 }}>
               Basket: <span className="mono" style={{ color: 'var(--color-accent-300)' }}>{name}</span>
             </h4>
             <span className="tag tag-neutral mono">{countLabel}</span>
           </div>
+          
           <div className="text-muted" style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8, fontSize: 13 }}>
             <span>Requests are collected at</span>
             <span className="mono" style={{ color: 'var(--color-text)' }}>
@@ -107,6 +117,8 @@ function BasketPage({ onDelete }: BasketPageProps) {
             <span style={{ color: 'var(--color-accent)', fontSize: 11 }}>{copied}</span>
           </div>
         </div>
+
+        {/* Basket Controls */}
         <div style={{ display: 'flex', gap: 6 }}>
           <button className="btn btn-secondary btn-icon" onClick={refreshRequests} title="Refresh">
             <svg width="17" height="17" viewBox="0 0 256 256" fill="currentColor">
@@ -133,35 +145,27 @@ function BasketPage({ onDelete }: BasketPageProps) {
 
       <div className="hr" style={{ margin: '20px 0 4px' }} />
 
-      {requests.length > 0 ? (
+      {/* Requests List */}
+      { requests.length > 0 && 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 16 }}>
-          {requests.map((req) => (
+          { requests.map((req) => (
             <RequestCard key={req.id} request={req} />
-          ))}
+          )) }
         </div>
-      ) : (
+      }
+
+      {/* Empty Request List */}
+      { requests.length === 0 && 
         <div className="card elev-sm" style={{ marginTop: 20, padding: '56px 28px', alignItems: 'center', textAlign: 'center', gap: 10 }}>
           <div className="text-muted" style={{ fontSize: 14 }}>
             No requests received yet.
           </div>
-          <div
-            className="mono"
-            style={{
-              fontSize: 15,
-              padding: '10px 16px',
-              borderRadius: 'var(--radius-md)',
-              background: 'var(--color-bg)',
-              color: 'var(--color-accent-200)',
-              boxShadow: 'inset 0 0 0 1px var(--color-accent-800)',
-            }}
-          >
-            {url}
-          </div>
+          <div className="mono" style={spotlightURLStyle}>{url}</div>
           <div className="text-muted" style={{ fontSize: 12, maxWidth: 380 }}>
             Send anything to that URL — every method, header and body is captured here.
           </div>
         </div>
-      )}
+      }
     </main>
   );
 }
