@@ -1,4 +1,3 @@
-import json
 import logging
 
 from fastapi import APIRouter, Request, HTTPException
@@ -48,9 +47,9 @@ async def receive_request(name: str, request: Request) -> dict[str, str]:
     received_at = datetime.now(timezone.utc)
     body = await request.body() # Read the body as a stream of raw bytes
 
-    request_document = {
-        "_id":   request_id,
-        "received_at":  received_at,
+    request_document = { 
+        "_id": request_id,
+        "received_at": received_at,
         "body": body
     }
 
@@ -70,8 +69,8 @@ async def receive_request(name: str, request: Request) -> dict[str, str]:
                 """,
                 request_id, basket_id, request.method, request.url.path, 
 
-                json.dumps(dict(request.headers)),      # Convert headers and 
-                json.dumps(dict(request.query_params)), # query params to JSON.
+                dict(request.headers),
+                dict(request.query_params),
 
                 body.decode("utf-8", errors="replace"), # Convert the request body (bytes) to string
                 received_at
