@@ -2,7 +2,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 import uvicorn
 
-from routers import interface, webhooks
+from routers import interface, live, webhooks
 from db import mongo, postgres
 from db.config import get_settings
 
@@ -30,6 +30,9 @@ async def lifespan(app: FastAPI):
 app = FastAPI(lifespan=lifespan)
 
 app.include_router(interface.router)
+# Before webhooks: live owns /ws/{name}, and its HTTP fallback there must win
+# over the "/{full_path:path}" ingest catch-all.
+app.include_router(live.router)
 app.include_router(webhooks.router)
 
 
