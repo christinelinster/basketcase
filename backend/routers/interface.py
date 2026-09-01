@@ -1,11 +1,8 @@
 from datetime import datetime
 import logging
-from typing import Any
 from uuid import UUID
 
-import asyncpg
-from fastapi import APIRouter, Header, Request, Response, status, HTTPException
-from fastapi.responses import JSONResponse
+from fastapi import APIRouter, Header, HTTPException, Request, Response, status
 from pydantic import BaseModel, Field, field_validator
 
 from db import postgres
@@ -49,13 +46,6 @@ class BasketDetailResponse(BaseModel):
     requests: list[BasketRequestResponse]
 
 
-def not_implemented() -> JSONResponse:
-    return JSONResponse(
-        status_code=status.HTTP_501_NOT_IMPLEMENTED,
-        content={"detail": "Not implemented"},
-    )
-
-
 @router.get("/baskets/hello")
 async def hello() -> dict[str, str]:
     return {"message": "hello world"}
@@ -69,34 +59,24 @@ async def create_basket(
     basket: CreateBasketRequest,
     request: Request,
 ) -> BasketResponse:
-    if postgres.pool is None:
+    pool = postgres.pool
+    if pool is None:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="Database unavailable",
         )
 
     try:
-        async with postgres.pool.acquire() as connection:
+        async with pool.acquire() as connection:
             created_basket = await connection.fetchrow(
                 """
                 INSERT INTO baskets (name)
                 VALUES ($1)
-                RETURNING id, name, token, capacity, expires_at
+                ON CONFLICT (name) DO NOTHING
+                RETURNING name, token, expires_at
                 """,
                 basket.name,
             )
-    except asyncpg.UniqueViolationError as error:
-        if error.constraint_name == "baskets_name_key":
-            raise HTTPException(
-                status_code=status.HTTP_409_CONFLICT,
-                detail=f"Failed to create basket - {basket.name} already exists.",
-            ) from error
-
-        logger.exception("Unexpected uniqueness violation while creating basket")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Internal server error",
-        ) from error
     except Exception as error:
         logger.exception("Unexpected error while creating basket")
         raise HTTPException(
@@ -106,8 +86,8 @@ async def create_basket(
 
     if created_basket is None:
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Basket could not be created",
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"Failed to create basket - {basket.name} already exists.",
         )
 
     webhook_url = f"{str(request.base_url).rstrip('/')}/{created_basket['name']}"

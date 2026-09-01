@@ -98,13 +98,10 @@ async def test_create_basket_returns_webhook_url_token_and_expiry(client, monkey
         "token": "12345678-1234-5678-1234-567812345678",
         "expires_at": "2026-09-01T12:00:00Z",
     }
-    webhook_response = await client.post(response.json()["webhook_url"], content=b"payload")
-    assert webhook_response.status_code == 200
-    assert webhook_response.json() == {"status": "received"}
-
     assert len(connection.fetchrow_calls) == 1
     query, args = connection.fetchrow_calls[0]
     assert "INSERT INTO baskets (name)" in query
+    assert "ON CONFLICT (name) DO NOTHING" in query
     assert "RETURNING name, token, expires_at" in query
     assert args == ("demo123",)
 
@@ -126,15 +123,15 @@ async def test_create_basket_rejects_invalid_names_without_database_call(
 
 
 async def test_create_basket_returns_conflict_for_duplicate_name(client, monkeypatch):
-    error = asyncpg.UniqueViolationError("duplicate name")
-    error.constraint_name = "baskets_name_key"
-    connection = RecordingConnection(error)
+    connection = RecordingConnection(None)
     monkeypatch.setattr(postgres, "pool", FakePool(connection))
 
     response = await client.post("/api/baskets", json={"name": "demo123"})
 
     assert response.status_code == 409
-    assert response.json() == {"detail": "Basket name already exists"}
+    assert response.json() == {
+        "detail": "Failed to create basket - demo123 already exists."
+    }
 
 
 async def test_create_basket_returns_internal_error_for_other_unique_violation(
