@@ -2,10 +2,10 @@ from datetime import datetime
 import logging
 from uuid import UUID
 
-from fastapi import APIRouter, Header, HTTPException, Request, Response, status
+from fastapi import APIRouter, HTTPException, Request, Response, status
 from pydantic import BaseModel, Field, field_validator
 
-from db import postgres
+from db.dependencies import BasketToken, PostgresPool
 
 
 router = APIRouter(prefix="/api")
@@ -58,14 +58,8 @@ async def hello() -> dict[str, str]:
 async def create_basket(
     basket: CreateBasketRequest,
     request: Request,
+    pool: PostgresPool,
 ) -> BasketResponse:
-    pool = postgres.pool
-    if pool is None:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Database unavailable",
-        )
-
     try:
         async with pool.acquire() as connection:
             created_basket = await connection.fetchrow(
@@ -100,14 +94,8 @@ async def create_basket(
 
 
 @router.get("/baskets/{name}", response_model=BasketDetailResponse)
-async def get_basket(name: str) -> BasketDetailResponse:
-    if postgres.pool is None:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Database unavailable",
-        )
-
-    async with postgres.pool.acquire() as connection:
+async def get_basket(name: str, pool: PostgresPool) -> BasketDetailResponse:
+    async with pool.acquire() as connection:
         basket = await connection.fetchrow(
             """
             SELECT id, name, capacity, expires_at
@@ -153,14 +141,13 @@ async def get_basket(name: str) -> BasketDetailResponse:
 
 
 @router.delete("/baskets/{name}")
-async def delete_basket(name: str, x_basket_token: str | None = Header(None, alias="X-Basket-Token")) -> Response:
+async def delete_basket(
+    name: str,
+    token: BasketToken,
+    pool: PostgresPool,
+) -> Response:
     """Delete a basket by name and token, and associated requests via cascade."""
-    try:
-        token = UUID(x_basket_token)
-    except (ValueError, TypeError):
-        raise HTTPException(status_code=404, detail="Basket not found")
-
-    async with postgres.pool.acquire() as connection:
+    async with pool.acquire() as connection:
         deleted = await connection.fetchrow(
             """
             DELETE FROM baskets
@@ -178,16 +165,14 @@ async def delete_basket(name: str, x_basket_token: str | None = Header(None, ali
 
 
 @router.delete('/baskets/{name}/requests/{request_id:uuid}', status_code=204)
-async def delete_request(name: str, request_id: UUID, x_basket_token: str | None = Header(None, alias="X-Basket-Token")):
+async def delete_request(
+    name: str,
+    request_id: UUID,
+    token: BasketToken,
+    pool: PostgresPool,
+):
     """Delete one specific request from a basket by request ID."""
-
-    try:
-        token = UUID(x_basket_token)
-    except (ValueError, TypeError):
-        raise HTTPException(status_code=404, detail="Request not found")
-
-
-    async with postgres.pool.acquire() as connection:
+    async with pool.acquire() as connection:
         basket = await connection.fetchrow(
             """
             SELECT id
@@ -219,14 +204,13 @@ async def delete_request(name: str, request_id: UUID, x_basket_token: str | None
 
 
 @router.delete('/baskets/{name}/requests', status_code=204)
-async def delete_all_requests(name: str, x_basket_token: str | None = Header(None, alias="X-Basket-Token")):
+async def delete_all_requests(
+    name: str,
+    token: BasketToken,
+    pool: PostgresPool,
+):
     """Delete every request inside a basket without deleting the basket itself."""
-    try:
-        token = UUID(x_basket_token)
-    except (ValueError, TypeError):
-        raise HTTPException(status_code=404, detail="Basket not found")
-
-    async with postgres.pool.acquire() as connection:
+    async with pool.acquire() as connection:
         basket = await connection.fetchrow(
             """
             SELECT id

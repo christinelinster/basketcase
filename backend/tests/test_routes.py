@@ -5,8 +5,10 @@ import asyncpg
 import httpx
 import pytest
 import pytest_asyncio
+from fastapi import HTTPException
 
 from db import postgres
+from db.dependencies import get_basket_token, get_postgres_pool
 from index import app
 
 
@@ -75,6 +77,74 @@ async def test_hello_route(client):
 
     assert response.status_code == 200
     assert response.json() == {"message": "hello world"}
+
+
+async def test_get_postgres_pool_returns_initialized_pool(monkeypatch):
+    expected_pool = FakePool(RecordingConnection(None))
+    monkeypatch.setattr(postgres, "pool", expected_pool)
+
+    assert get_postgres_pool() is expected_pool
+
+
+async def test_get_postgres_pool_rejects_unavailable_database(monkeypatch):
+    monkeypatch.setattr(postgres, "pool", None)
+
+    with pytest.raises(HTTPException) as caught:
+        get_postgres_pool()
+
+    assert caught.value.status_code == 503
+    assert caught.value.detail == "Database unavailable"
+
+
+async def test_get_basket_token_returns_valid_uuid():
+    token = "12345678-1234-5678-1234-567812345678"
+
+    assert get_basket_token(token) == uuid.UUID(token)
+
+
+@pytest.mark.parametrize("token", [None, "", "not-a-uuid"])
+async def test_get_basket_token_rejects_missing_or_invalid_value(token):
+    with pytest.raises(HTTPException) as caught:
+        get_basket_token(token)
+
+    assert caught.value.status_code == 404
+    assert caught.value.detail == "Resource not found"
+
+
+async def test_delete_basket_uses_injected_token(client, monkeypatch):
+    token = uuid.UUID("12345678-1234-5678-1234-567812345678")
+    connection = RecordingConnection({"id": 7})
+    monkeypatch.setattr(postgres, "pool", FakePool(connection))
+    app.dependency_overrides[get_basket_token] = lambda: token
+
+    try:
+        response = await client.delete("/api/baskets/demo123")
+    finally:
+        app.dependency_overrides.pop(get_basket_token, None)
+
+    assert response.status_code == 204
+    _, args = connection.fetchrow_calls[0]
+    assert args == ("demo123", token)
+
+
+async def test_create_basket_uses_injected_postgres_pool(client, monkeypatch):
+    connection = RecordingConnection(
+        {
+            "name": "demo123",
+            "token": uuid.UUID("12345678-1234-5678-1234-567812345678"),
+            "expires_at": datetime(2026, 9, 1, 12, 0, tzinfo=timezone.utc),
+        }
+    )
+    injected_pool = FakePool(connection)
+    monkeypatch.setattr(postgres, "pool", None)
+    app.dependency_overrides[get_postgres_pool] = lambda: injected_pool
+
+    try:
+        response = await client.post("/api/baskets", json={"name": "demo123"})
+    finally:
+        app.dependency_overrides.pop(get_postgres_pool, None)
+
+    assert response.status_code == 201
 
 
 async def test_create_basket_returns_webhook_url_token_and_expiry(client, monkeypatch):
