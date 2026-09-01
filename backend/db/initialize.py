@@ -79,15 +79,6 @@ async def initialize_mongo_schema() -> None:
 
     collection = database[MONGO_RAW_REQUESTS_COLLECTION]
     await collection.create_index(
-        [("request_id", ASCENDING)],
-        unique=True,
-        name="raw_requests_request_id_unique",
-    )
-    await collection.create_index(
-        [("basket_name", ASCENDING)],
-        name="raw_requests_basket_name",
-    )
-    await collection.create_index(
         [("received_at", DESCENDING)],
         name="raw_requests_received_at_desc",
     )

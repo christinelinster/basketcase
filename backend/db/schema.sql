@@ -17,7 +17,7 @@ CREATE TYPE http_method AS ENUM (
 );
 
 CREATE TABLE requests (
-  id           int          GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  id           uuid         PRIMARY KEY,
   basket_id    int          NOT NULL REFERENCES baskets ON DELETE CASCADE,
   method       http_method  NOT NULL,
   path         varchar(255) NOT NULL,

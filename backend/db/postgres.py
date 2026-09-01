@@ -1,4 +1,5 @@
 import asyncpg
+import json
 
 from db.config import get_settings
 
@@ -18,6 +19,7 @@ async def connect() -> None:
         settings.postgres_url,
         min_size=1,
         max_size=10,
+        init=configure_connection,
     )
     pool = created_pool
     try:
@@ -26,6 +28,13 @@ async def connect() -> None:
         pool = None
         await created_pool.close()
         raise
+
+
+async def configure_connection(connection: asyncpg.Connection):
+    await connection.set_type_codec(
+        "jsonb", encoder=json.dumps, decoder=json.loads,
+        schema="pg_catalog", format="text"
+    )
 
 
 async def ping() -> None:
