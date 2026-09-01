@@ -2,11 +2,7 @@ import asyncio
 from pathlib import Path
 
 from pymongo import DESCENDING
-
 from db import mongo, postgres
-
-
-MONGO_RAW_REQUESTS_COLLECTION = "raw_requests"
 
 
 async def initialize_postgres_schema() -> None:
@@ -21,13 +17,7 @@ async def initialize_postgres_schema() -> None:
 
 
 async def initialize_mongo_schema() -> None:
-    database = mongo.get_database()
-    collection_names = await database.list_collection_names()
-
-    if MONGO_RAW_REQUESTS_COLLECTION not in collection_names:
-        await database.create_collection(MONGO_RAW_REQUESTS_COLLECTION)
-
-    collection = database[MONGO_RAW_REQUESTS_COLLECTION]
+    collection = mongo.get_database()["raw_requests"]
     await collection.create_index(
         [("received_at", DESCENDING)],
         name="raw_requests_received_at_desc",
