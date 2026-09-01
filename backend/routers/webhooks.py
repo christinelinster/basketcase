@@ -1,9 +1,11 @@
-import logging
+
 
 from fastapi import APIRouter, Request, HTTPException
 
 from uuid6 import uuid7
 from datetime import datetime, timezone
+import logging
+import re
 
 from db import postgres
 from db import mongo
@@ -22,14 +24,20 @@ WEBHOOK_METHODS = [
     "TRACE",
 ]
 
+# Alphanumeric basket names only, 1-50 characters.
+BASKET_NAME_PATTERN = re.compile(r"^[A-Za-z0-9]{1,50}$")
 
-@router.api_route("/{name}", methods=WEBHOOK_METHODS)
-async def receive_request(name: str, request: Request) -> dict[str, str]:
+@router.api_route("/{full_path:path}", methods=WEBHOOK_METHODS)
+async def receive_request(full_path: str, request: Request) -> dict[str, str]:
+    # Extract and validate the first part of the path as the basket name:
+    name = full_path.split('/', 1)[0]
+    if not BASKET_NAME_PATTERN.match(name):
+        raise HTTPException(status_code=404, detail="Page not found")
+
     if postgres.pool is None:
           raise HTTPException(503, "PostgreSQL unavailable")
 
-    # Check if the basket exists
-    name = name.split('/')[0]
+    # If the basket name is valid, check if it exists
     async with postgres.pool.acquire() as pg_connection:
         basket = await pg_connection.fetchrow(
             "SELECT id FROM baskets WHERE name = $1", name
@@ -39,8 +47,7 @@ async def receive_request(name: str, request: Request) -> dict[str, str]:
             raise HTTPException(status_code=404, detail="Page not found")
 
 
-    # UUID7 > UUID4 for request_id;
-    # UUID7 includes a built-in timestamp for chronological sorting.
+    # UUID7 > UUID4 for request_id; UUID7 includes a built-in timestamp for chronological sorting.
     request_id = uuid7()
 
     # Insert the request body into Mongo:
