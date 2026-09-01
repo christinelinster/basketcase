@@ -33,7 +33,7 @@ class BasketResponse(BaseModel):
 
 
 class BasketRequestResponse(BaseModel):
-    id: int
+    id: UUID
     method: str
     path: str
     headers: dict[str, Any]
@@ -160,6 +160,8 @@ async def get_basket(name: str) -> BasketDetailResponse:
             basket["id"],
         )
 
+        print(requests)
+
     return BasketDetailResponse(
         name=basket["name"],
         capacity=basket["capacity"],
@@ -227,8 +229,8 @@ async def delete_basket(name: str, x_basket_token: str | None = Header(None, ali
     return Response(status_code=204)
 
 
-@router.delete('/baskets/{name}/requests/{request_id:int}', status_code=204)
-async def delete_request(name: str, request_id: int, x_basket_token: str | None = Header(None, alias="X-Basket-Token")):
+@router.delete('/baskets/{name}/requests/{request_id:uuid}', status_code=204)
+async def delete_request(name: str, request_id: UUID, x_basket_token: str | None = Header(None, alias="X-Basket-Token")):
     """Delete one specific request from a basket by request ID."""
 
     try:
