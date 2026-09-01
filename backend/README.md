@@ -9,13 +9,28 @@ cd backend
 cp .env.example .env
 ```
 
-The configured databases should both be named `basketcase`:
+Create the PostgreSQL database and role before initialization, then configure
+the connection using individual values:
 
 ```dotenv
-POSTGRES_URL=postgresql://postgres:password@localhost:5432/basketcase
+PGHOST=localhost
+PGPORT=5432
+PGUSER=basketcase_app
+PGPASSWORD=password
+PGDATABASE=basketcase
 MONGODB_URL=mongodb://localhost:27017
 MONGODB_DATABASE=basketcase
 ```
+
+The PostgreSQL database in `PGDATABASE` and role in `PGUSER` must already exist.
+The role must authenticate with `PGPASSWORD`, connect to the database, and be
+allowed to create tables, types, and indexes. PostgreSQL commonly provides a
+role named `postgres`, but it has no universal default password. Leave
+`PGPASSWORD` empty only when the server permits passwordless authentication.
+Explicit values in `.env` override the local defaults.
+
+The MongoDB credentials, when present, must already exist and have permission
+to create collections and indexes in `MONGODB_DATABASE`.
 
 ## Initialize the databases
 
@@ -25,10 +40,11 @@ Run initialization explicitly before starting the application:
 python -m db.initialize
 ```
 
-The command connects to both configured database instances. PostgreSQL receives
-the existing `db/schema.sql` on a fresh database. MongoDB creates the
-`raw_requests` collection and its indexes. If the PostgreSQL schema is already
-complete, the command leaves it unchanged. Application startup does not run
+The command connects to the existing `PGDATABASE` and applies the idempotent
+`db/schema.sql`, which creates missing PostgreSQL tables, types, and indexes.
+Existing tables are not migrated or altered. MongoDB creates
+`MONGODB_DATABASE` implicitly when needed, creates the `raw_requests` collection
+when missing, and ensures its indexes exist. Application startup does not run
 database DDL.
 
 ## Start the backend

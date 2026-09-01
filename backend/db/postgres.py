@@ -1,9 +1,35 @@
 import asyncpg
 import json
 
-from db.config import get_settings
+from db.config import Settings, get_settings
 
 pool: asyncpg.Pool | None = None
+
+
+def connection_parameters(
+    settings: Settings,
+    *,
+    database: str | None = None,
+) -> dict[str, str | int]:
+    required_settings = {
+        "PGHOST": settings.pg_host,
+        "PGUSER": settings.pg_user,
+        "PGDATABASE": settings.pg_database,
+    }
+    missing_settings = [
+        name for name, value in required_settings.items() if not value
+    ]
+    if missing_settings:
+        formatted_names = ", ".join(missing_settings)
+        raise RuntimeError(f"Missing required PostgreSQL settings: {formatted_names}")
+
+    return {
+        "host": settings.pg_host,
+        "port": settings.pg_port,
+        "user": settings.pg_user,
+        "password": settings.pg_password,
+        "database": database or settings.pg_database,
+    }
 
 
 async def connect() -> None:
@@ -12,11 +38,10 @@ async def connect() -> None:
         return
 
     settings = get_settings()
-    if not settings.postgres_url:
-        raise RuntimeError("POSTGRES_URL is required")
+    parameters = connection_parameters(settings)
 
     created_pool = await asyncpg.create_pool(
-        settings.postgres_url,
+        **parameters,
         min_size=1,
         max_size=10,
         init=configure_connection,

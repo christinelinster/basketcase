@@ -60,14 +60,6 @@ def not_implemented() -> JSONResponse:
 async def hello() -> dict[str, str]:
     return {"message": "hello world"}
 
-
-# This is handled in the frontend local storage.
-
-# @router.get("/baskets")
-# async def list_baskets() -> JSONResponse:
-#     return not_implemented()
-
-
 @router.post(
     "/baskets",
     response_model=BasketResponse,
@@ -179,14 +171,6 @@ async def get_basket(name: str) -> BasketDetailResponse:
         ],
     )
 
-
-# ---------------------------------------------------------------------------
-# Delete Routes
-# - X-Basket-Token represents the per-basket token used for authentication,
-#   from localStorage.
-# - All failures return 404 with identical messages to obscure basket existence
-#   from bad actors.
-# ---------------------------------------------------------------------------
 
 @router.delete("/baskets/{name}")
 async def delete_basket(name: str, x_basket_token: str | None = Header(None, alias="X-Basket-Token")) -> Response:
