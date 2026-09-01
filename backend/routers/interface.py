@@ -36,8 +36,8 @@ class BasketRequestResponse(BaseModel):
     id: UUID
     method: str
     path: str
-    headers: dict[str, Any]
-    query_params: dict[str, Any]
+    headers: dict[str, str | list[str]]
+    query_params: dict[str, str | list[str]]
     body: str | None
     received_at: datetime
 
@@ -160,7 +160,6 @@ async def get_basket(name: str) -> BasketDetailResponse:
             basket["id"],
         )
 
-        print(requests)
 
     return BasketDetailResponse(
         name=basket["name"],
@@ -179,21 +178,6 @@ async def get_basket(name: str) -> BasketDetailResponse:
             for request in requests
         ],
     )
-
-
-@router.delete("/baskets/{name}")
-async def delete_basket(name: str) -> JSONResponse:
-    return not_implemented()
-
-
-@router.delete("/baskets/{name}/requests")
-async def delete_requests(name: str) -> JSONResponse:
-    return not_implemented()
-
-
-@router.get("/baskets/{name}/requests/{request_id}")
-async def get_request(name: str, request_id: str) -> JSONResponse:
-    return not_implemented()
 
 
 # ---------------------------------------------------------------------------
@@ -238,9 +222,6 @@ async def delete_request(name: str, request_id: UUID, x_basket_token: str | None
     except (ValueError, TypeError):
         raise HTTPException(status_code=404, detail="Request not found")
 
-    MAX_POSTGRES_INT = 2147483647
-    if request_id > MAX_POSTGRES_INT:
-        raise HTTPException(status_code=404, detail="Request not found")
 
     async with postgres.pool.acquire() as connection:
         basket = await connection.fetchrow(
