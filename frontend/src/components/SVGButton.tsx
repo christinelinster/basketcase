@@ -11,7 +11,14 @@ interface SVGButtonProps {
 
 function SVGButton({ path, onClick, title, size = 17, className = 'btn btn-secondary btn-icon', style }: SVGButtonProps) {
   return (
-    <button className={className} onClick={onClick} title={title} style={style}>
+    <button
+      type="button"
+      className={className}
+      onClick={onClick}
+      title={title}
+      aria-label={title}
+      style={style}
+    >
       <svg width={size} height={size} viewBox="0 0 256 256" fill="currentColor">
         <path d={path} />
       </svg>

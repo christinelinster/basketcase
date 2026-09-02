@@ -12,6 +12,19 @@ const METHOD_COLORS: Record<string, { fg: string; bg: string }> = {
 };
 const DEFAULT_METHOD_COLOR = { fg: '#c9c9c9', bg: 'rgba(201,201,201,0.12)' };
 
+const formatValues = (value: string | string[]) => Array.isArray(value) ? value.join(', ') : value;
+
+const buildQueryString = (queryParams: Record<string, string | string[]>) => {
+  const searchParams = new URLSearchParams();
+
+  Object.entries(queryParams).forEach(([key, value]) => {
+    const values = Array.isArray(value) ? value : [value];
+    values.forEach(item => searchParams.append(key, item));
+  });
+
+  return searchParams.toString();
+};
+
 interface RequestCardProps {
   request: BasketRequest;
 }
@@ -28,7 +41,7 @@ function RequestCard({ request }: RequestCardProps) {
   const query = Object.entries(request.query_params).map(([k, v]) => ({ k, v }));
 
   const contentTypeEntry = Object.entries(request.headers).find(([k]) => k.toLowerCase() === 'content-type');
-  const contentType = contentTypeEntry ? contentTypeEntry[1] : 'none';
+  const contentType = contentTypeEntry ? formatValues(contentTypeEntry[1]) : 'none';
 
   let bodyText = request.body || '— empty —';
   if (pretty && request.body) {
@@ -39,7 +52,7 @@ function RequestCard({ request }: RequestCardProps) {
     }
   }
 
-  const path = query.length > 0 ? `${request.path}?${new URLSearchParams(request.query_params).toString()}` : request.path;
+  const path = query.length > 0 ? `${request.path}?${buildQueryString(request.query_params)}` : request.path;
 
   return (
     <article className="card elev-sm" style={{ padding: 0, gap: 0, overflow: 'hidden' }}>
@@ -89,7 +102,7 @@ function RequestCard({ request }: RequestCardProps) {
                 {k}
               </div>
               <div className="mono" style={{ fontSize: 12, padding: '3px 0', wordBreak: 'break-all' }}>
-                {v}
+                {formatValues(v)}
               </div>
             </Fragment>
           ))}
@@ -104,7 +117,7 @@ function RequestCard({ request }: RequestCardProps) {
                 {row.k}
               </div>
               <div className="mono" style={{ fontSize: 12, padding: '3px 0', wordBreak: 'break-all' }}>
-                {row.v}
+                {formatValues(row.v)}
               </div>
             </Fragment>
           ))}

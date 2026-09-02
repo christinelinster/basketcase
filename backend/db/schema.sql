@@ -1,4 +1,4 @@
-CREATE TABLE baskets (
+CREATE TABLE IF NOT EXISTS baskets (
   id         int         GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
   name       varchar(50) NOT NULL UNIQUE,
   token      uuid        NOT NULL UNIQUE DEFAULT gen_random_uuid(),
@@ -9,14 +9,20 @@ CREATE TABLE baskets (
   CONSTRAINT baskets_name_reserved  CHECK(lower(name) <> 'baskets')
 );
 
-CREATE INDEX baskets_name_index ON baskets(name);
+CREATE INDEX IF NOT EXISTS baskets_name_index ON baskets(name);
 
-CREATE TYPE http_method AS ENUM (
-  'GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD',
-  'CONNECT', 'OPTIONS', 'TRACE'
-);
+DO $$
+BEGIN
+  CREATE TYPE http_method AS ENUM (
+    'GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD',
+    'CONNECT', 'OPTIONS', 'TRACE'
+  );
+EXCEPTION
+    WHEN duplicate_object THEN NULL;
+END
+$$;
 
-CREATE TABLE requests (
+CREATE TABLE IF NOT EXISTS requests (
   id           uuid         PRIMARY KEY,
   basket_id    int          NOT NULL REFERENCES baskets ON DELETE CASCADE,
   method       http_method  NOT NULL,
@@ -27,4 +33,4 @@ CREATE TABLE requests (
   received_at  timestamptz  NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX requests_basket_id_index ON requests (basket_id);
+CREATE INDEX IF NOT EXISTS requests_basket_id_index ON requests (basket_id);

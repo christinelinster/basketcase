@@ -1,5 +1,4 @@
 from typing import Any
-
 from pymongo import AsyncMongoClient
 
 from db.config import get_settings

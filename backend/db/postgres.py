@@ -1,5 +1,6 @@
-import asyncpg
 import json
+
+import asyncpg
 
 from db.config import get_settings
 
@@ -12,38 +13,23 @@ async def connect() -> None:
         return
 
     settings = get_settings()
-    if not settings.postgres_url:
-        raise RuntimeError("POSTGRES_URL is required")
-
-    created_pool = await asyncpg.create_pool(
-        settings.postgres_url,
+    pool = await asyncpg.create_pool(
+        host=settings.pg_host,
+        port=settings.pg_port,
+        user=settings.pg_user,
+        password=settings.pg_password,
+        database=settings.pg_database,
         min_size=1,
         max_size=10,
         init=configure_connection,
     )
-    pool = created_pool
-    try:
-        await ping()
-    except BaseException:
-        pool = None
-        await created_pool.close()
-        raise
 
 
-async def configure_connection(connection: asyncpg.Connection):
+async def configure_connection(connection: asyncpg.Connection) -> None:
     await connection.set_type_codec(
         "jsonb", encoder=json.dumps, decoder=json.loads,
         schema="pg_catalog", format="text"
     )
-
-
-async def ping() -> None:
-    if pool is None:
-        raise RuntimeError("PostgreSQL pool is not connected")
-
-    async with pool.acquire() as connection:
-        await connection.execute("SELECT 1")
-
 
 async def close() -> None:
     global pool

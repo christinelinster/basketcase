@@ -1,14 +1,19 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
+import type { CreatedBasket } from '../types/basket';
+import SVGButton from './SVGButton';
+import { ICON_COPY } from './icons';
 
 interface LandingPageProps {
   baskets: string[];
-  onCreate: (name: string) => void;
+  createdBasket: CreatedBasket | null;
+  onCreate: (name: string) => Promise<void>;
 }
 
-function LandingPage({ baskets, onCreate }: LandingPageProps) {
+function LandingPage({ baskets, createdBasket, onCreate }: LandingPageProps) {
   // Generate random basket name
   const [ newBasketName, setNewBasketName ] = useState(generateBasketName());
+  const [ copied, setCopied ] = useState(false);
 
   // Event Handlers
   const handleNameChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -18,13 +23,21 @@ function LandingPage({ baskets, onCreate }: LandingPageProps) {
     setNewBasketName(inputValue.replace(/[^a-zA-Z0-9]/g, '').slice(0, 50))
   }
 
-  const handleSubmit = (event: React.SubmitEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: React.SubmitEvent<HTMLFormElement>) => {
     event.preventDefault();
 
     const basketName = newBasketName.trim()
     if (!basketName) return
 
-    onCreate(basketName);
+    setCopied(false)
+    await onCreate(basketName);
+  }
+
+  const copyWebhookUrl = async () => {
+    if (!createdBasket || !navigator.clipboard) return
+
+    await navigator.clipboard.writeText(createdBasket.webhook_url)
+    setCopied(true)
   }
 
   // Styles
@@ -77,6 +90,28 @@ function LandingPage({ baskets, onCreate }: LandingPageProps) {
             Create
           </button>
         </form>
+
+        {createdBasket && (
+          <div style={{ marginTop: 18, padding: 14, borderRadius: 'var(--radius-md)', background: 'var(--color-bg)', boxShadow: 'inset 0 0 0 1px var(--color-accent-800)' }}>
+            <div className="text-muted" style={{ fontSize: 12, marginBottom: 7 }}>
+              Send webhook requests to
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+              <span className="mono" style={{ color: 'var(--color-accent-200)', fontSize: 13, overflowWrap: 'anywhere' }}>
+                {createdBasket.webhook_url}
+              </span>
+              <SVGButton
+                path={ICON_COPY}
+                onClick={copyWebhookUrl}
+                title="Copy webhook URL"
+                className="btn btn-ghost"
+                size={15}
+                style={{ padding: '2px 4px' }}
+              />
+              {copied && <span style={{ color: 'var(--color-accent)', fontSize: 12 }}>Copied</span>}
+            </div>
+          </div>
+        )}
       </section>
 
       {/* Baskets List Card */}
