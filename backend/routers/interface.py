@@ -5,6 +5,8 @@ from uuid import UUID
 from fastapi import APIRouter, HTTPException, Request, Response, status
 from pydantic import BaseModel, Field, field_validator
 
+from backend.routers.route_config import get_route_config
+
 from db.dependencies import BasketToken, PostgresPool
 
 
@@ -17,8 +19,8 @@ class CreateBasketRequest(BaseModel):
     @field_validator("name")
     @classmethod
     def reject_reserved_name(cls, name: str) -> str:
-        if name.casefold() == "baskets":
-            raise ValueError("The name 'baskets' is reserved")
+        if name.casefold() in get_route_config().reserved_names:
+            raise ValueError(f"The name '{name}' is reserved.")
         return name
 
 
