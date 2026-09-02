@@ -290,6 +290,8 @@ async def test_create_basket_returns_internal_error_for_unexpected_error(
 async def test_get_basket_returns_metadata_and_requests_newest_first(client, monkeypatch):
     older_received_at = datetime(2026, 8, 29, 19, 0, tzinfo=timezone.utc)
     newer_received_at = datetime(2026, 8, 29, 20, 0, tzinfo=timezone.utc)
+    older_request_id = uuid.UUID("12345678-1234-5678-1234-567812345678")
+    newer_request_id = uuid.UUID("87654321-4321-8765-4321-876543218765")
     connection = BasketConnection(
         {
             "id": 7,
@@ -299,7 +301,7 @@ async def test_get_basket_returns_metadata_and_requests_newest_first(client, mon
         },
         [
             {
-                "id": 2,
+                "id": newer_request_id,
                 "method": "POST",
                 "path": "/events",
                 "headers": {"content-type": "application/json"},
@@ -308,7 +310,7 @@ async def test_get_basket_returns_metadata_and_requests_newest_first(client, mon
                 "received_at": newer_received_at,
             },
             {
-                "id": 1,
+                "id": older_request_id,
                 "method": "GET",
                 "path": "/health",
                 "headers": {},
@@ -329,7 +331,7 @@ async def test_get_basket_returns_metadata_and_requests_newest_first(client, mon
         "expires_at": "2026-09-01T12:00:00Z",
         "requests": [
             {
-                "id": 2,
+                "id": "87654321-4321-8765-4321-876543218765",
                 "method": "POST",
                 "path": "/events",
                 "headers": {"content-type": "application/json"},
@@ -338,7 +340,7 @@ async def test_get_basket_returns_metadata_and_requests_newest_first(client, mon
                 "received_at": "2026-08-29T20:00:00Z",
             },
             {
-                "id": 1,
+                "id": "12345678-1234-5678-1234-567812345678",
                 "method": "GET",
                 "path": "/health",
                 "headers": {},
@@ -395,24 +397,17 @@ async def test_get_basket_returns_not_found_for_unknown_name(client, monkeypatch
     "method",
     ["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS", "TRACE"],
 )
-async def test_webhook_methods_are_registered(client, method):
-    response = await client.request(method, "/example")
+async def test_webhook_methods_are_registered(client, method, monkeypatch):
+    connection = MutationConnection([{"id": 7}])
+    pool = FakePool(connection)
+    collection = MongoCollection()
+    database = MongoDatabase(collection)
+    monkeypatch.setattr(mongo, "get_database", lambda: database)
+    app.dependency_overrides[get_postgres_pool] = lambda: pool
+
+    try:
+        response = await client.request(method, "/example")
+    finally:
+        app.dependency_overrides.pop(get_postgres_pool, None)
 
     assert response.status_code == 200
-
-
-@pytest.mark.parametrize(
-    ("method", "path"),
-    [
-        ("GET", "/api/baskets"),
-        ("DELETE", "/api/baskets/example"),
-        ("DELETE", "/api/baskets/example/requests"),
-        ("GET", "/api/baskets/example/requests/request-id"),
-        ("DELETE", "/api/baskets/example/requests/request-id"),
-    ],
-)
-async def test_future_interface_routes_are_not_implemented(client, method, path):
-    response = await client.request(method, path)
-
-    assert response.status_code == 501
-    assert response.json() == {"detail": "Not implemented"}

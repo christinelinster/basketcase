@@ -19,12 +19,14 @@ from db.config import get_settings
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     await postgres.connect()
-    await mongo.connect()
-
-    yield
-
-    await mongo.close()
-    await postgres.close()
+    try:
+        try:
+            await mongo.connect()
+            yield
+        finally:
+            await mongo.close()
+    finally:
+        await postgres.close()
 
 
 app = FastAPI(lifespan=lifespan)
