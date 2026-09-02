@@ -57,6 +57,7 @@ async def receive_request(
 
     request_document = { 
         "_id": request_id,
+        "basket_id": basket["id"],
         "received_at": received_at,
         "body": body
     }

@@ -1,4 +1,5 @@
 from datetime import datetime, timezone
+from unittest.mock import AsyncMock
 import uuid
 
 import asyncpg
@@ -7,7 +8,7 @@ import pytest
 import pytest_asyncio
 from fastapi import HTTPException
 
-from db import postgres
+from db import mongo, postgres
 from db.dependencies import get_basket_token, get_postgres_pool
 from index import app
 
@@ -60,6 +61,34 @@ class BasketConnection:
     async def fetch(self, query, *args):
         self.fetch_calls.append((query, args))
         return self.requests
+
+
+class MutationConnection:
+    def __init__(self, fetchrow_results):
+        self.fetchrow_results = list(fetchrow_results)
+        self.fetchrow_calls = []
+        self.execute_calls = []
+
+    async def fetchrow(self, query, *args):
+        self.fetchrow_calls.append((query, args))
+        return self.fetchrow_results.pop(0)
+
+    async def execute(self, query, *args):
+        self.execute_calls.append((query, args))
+
+
+class MongoCollection:
+    def __init__(self):
+        self.insert_one = AsyncMock()
+
+
+class MongoDatabase:
+    def __init__(self, collection):
+        self.collection = collection
+
+    def __getitem__(self, collection_name):
+        assert collection_name == "raw_requests"
+        return self.collection
 
 
 @pytest_asyncio.fixture
@@ -145,6 +174,29 @@ async def test_create_basket_uses_injected_postgres_pool(client, monkeypatch):
         app.dependency_overrides.pop(get_postgres_pool, None)
 
     assert response.status_code == 201
+
+
+async def test_webhook_stores_basket_id_in_mongo(client, monkeypatch):
+    connection = MutationConnection([{"id": 7}])
+    pool = FakePool(connection)
+    collection = MongoCollection()
+    database = MongoDatabase(collection)
+    monkeypatch.setattr(mongo, "get_database", lambda: database)
+    app.dependency_overrides[get_postgres_pool] = lambda: pool
+
+    try:
+        response = await client.post(
+            "/demo123/events?source=postman",
+            content=b'{"ok":true}',
+            headers={"Content-Type": "application/json"},
+        )
+    finally:
+        app.dependency_overrides.pop(get_postgres_pool, None)
+
+    assert response.status_code == 200
+    document = collection.insert_one.await_args.args[0]
+    assert document["basket_id"] == 7
+    assert document["body"] == b'{"ok":true}'
 
 
 async def test_create_basket_returns_webhook_url_token_and_expiry(client, monkeypatch):
