@@ -5,7 +5,7 @@ from uuid import UUID
 from fastapi import APIRouter, HTTPException, Request, Response, status
 from pydantic import BaseModel, Field, field_validator
 
-from backend.routers.route_config import get_route_config
+from routers.route_config import get_route_config
 
 from db.dependencies import BasketToken, PostgresPool
 

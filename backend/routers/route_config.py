@@ -9,8 +9,8 @@ class RouteConfig:
 
 
 @lru_cache(maxsize=1)
-def get_app_config() -> RouteConfig:
+def get_route_config() -> RouteConfig:
     return RouteConfig(
-        frontend_dir=Path(__file__).parents[1] / "frontend" / "dist",
+        frontend_dir=Path(__file__).parents[2] / "frontend" / "dist",
         reserved_names={"baskets", "assets"}
     )
