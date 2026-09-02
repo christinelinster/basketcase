@@ -1,14 +1,11 @@
 from datetime import datetime
 import logging
-from typing import Any
 from uuid import UUID
 
-import asyncpg
-from fastapi import APIRouter, Header, Request, Response, status, HTTPException
-from fastapi.responses import JSONResponse
+from fastapi import APIRouter, HTTPException, Request, Response, status
 from pydantic import BaseModel, Field, field_validator
 
-from db import postgres
+from db.dependencies import BasketToken, PostgresPool
 
 
 router = APIRouter(prefix="/api")
@@ -49,25 +46,6 @@ class BasketDetailResponse(BaseModel):
     requests: list[BasketRequestResponse]
 
 
-def not_implemented() -> JSONResponse:
-    return JSONResponse(
-        status_code=status.HTTP_501_NOT_IMPLEMENTED,
-        content={"detail": "Not implemented"},
-    )
-
-
-@router.get("/baskets/hello")
-async def hello() -> dict[str, str]:
-    return {"message": "hello world"}
-
-
-# This is handled in the frontend local storage.
-
-# @router.get("/baskets")
-# async def list_baskets() -> JSONResponse:
-#     return not_implemented()
-
-
 @router.post(
     "/baskets",
     response_model=BasketResponse,
@@ -76,35 +54,19 @@ async def hello() -> dict[str, str]:
 async def create_basket(
     basket: CreateBasketRequest,
     request: Request,
+    pool: PostgresPool,
 ) -> BasketResponse:
-    if postgres.pool is None:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Database unavailable",
-        )
-
     try:
-        async with postgres.pool.acquire() as connection:
+        async with pool.acquire() as connection:
             created_basket = await connection.fetchrow(
                 """
                 INSERT INTO baskets (name)
                 VALUES ($1)
-                RETURNING id, name, token, capacity, expires_at
+                ON CONFLICT (name) DO NOTHING
+                RETURNING name, token, expires_at
                 """,
                 basket.name,
             )
-    except asyncpg.UniqueViolationError as error:
-        if error.constraint_name == "baskets_name_key":
-            raise HTTPException(
-                status_code=status.HTTP_409_CONFLICT,
-                detail=f"Failed to create basket - {basket.name} already exists.",
-            ) from error
-
-        logger.exception("Unexpected uniqueness violation while creating basket")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Internal server error",
-        ) from error
     except Exception as error:
         logger.exception("Unexpected error while creating basket")
         raise HTTPException(
@@ -114,8 +76,8 @@ async def create_basket(
 
     if created_basket is None:
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Basket could not be created",
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"Failed to create basket - {basket.name} already exists.",
         )
 
     webhook_url = f"{str(request.base_url).rstrip('/')}/{created_basket['name']}"
@@ -128,14 +90,8 @@ async def create_basket(
 
 
 @router.get("/baskets/{name}", response_model=BasketDetailResponse)
-async def get_basket(name: str) -> BasketDetailResponse:
-    if postgres.pool is None:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Database unavailable",
-        )
-
-    async with postgres.pool.acquire() as connection:
+async def get_basket(name: str, pool: PostgresPool) -> BasketDetailResponse:
+    async with pool.acquire() as connection:
         basket = await connection.fetchrow(
             """
             SELECT id, name, capacity, expires_at
@@ -180,23 +136,14 @@ async def get_basket(name: str) -> BasketDetailResponse:
     )
 
 
-# ---------------------------------------------------------------------------
-# Delete Routes
-# - X-Basket-Token represents the per-basket token used for authentication,
-#   from localStorage.
-# - All failures return 404 with identical messages to obscure basket existence
-#   from bad actors.
-# ---------------------------------------------------------------------------
-
 @router.delete("/baskets/{name}")
-async def delete_basket(name: str, x_basket_token: str | None = Header(None, alias="X-Basket-Token")) -> Response:
+async def delete_basket(
+    name: str,
+    token: BasketToken,
+    pool: PostgresPool,
+) -> Response:
     """Delete a basket by name and token, and associated requests via cascade."""
-    try:
-        token = UUID(x_basket_token)
-    except (ValueError, TypeError):
-        raise HTTPException(status_code=404, detail="Basket not found")
-
-    async with postgres.pool.acquire() as connection:
+    async with pool.acquire() as connection:
         deleted = await connection.fetchrow(
             """
             DELETE FROM baskets
@@ -214,16 +161,14 @@ async def delete_basket(name: str, x_basket_token: str | None = Header(None, ali
 
 
 @router.delete('/baskets/{name}/requests/{request_id:uuid}', status_code=204)
-async def delete_request(name: str, request_id: UUID, x_basket_token: str | None = Header(None, alias="X-Basket-Token")):
+async def delete_request(
+    name: str,
+    request_id: UUID,
+    token: BasketToken,
+    pool: PostgresPool,
+):
     """Delete one specific request from a basket by request ID."""
-
-    try:
-        token = UUID(x_basket_token)
-    except (ValueError, TypeError):
-        raise HTTPException(status_code=404, detail="Request not found")
-
-
-    async with postgres.pool.acquire() as connection:
+    async with pool.acquire() as connection:
         basket = await connection.fetchrow(
             """
             SELECT id
@@ -255,14 +200,13 @@ async def delete_request(name: str, request_id: UUID, x_basket_token: str | None
 
 
 @router.delete('/baskets/{name}/requests', status_code=204)
-async def delete_all_requests(name: str, x_basket_token: str | None = Header(None, alias="X-Basket-Token")):
+async def delete_all_requests(
+    name: str,
+    token: BasketToken,
+    pool: PostgresPool,
+):
     """Delete every request inside a basket without deleting the basket itself."""
-    try:
-        token = UUID(x_basket_token)
-    except (ValueError, TypeError):
-        raise HTTPException(status_code=404, detail="Basket not found")
-
-    async with postgres.pool.acquire() as connection:
+    async with pool.acquire() as connection:
         basket = await connection.fetchrow(
             """
             SELECT id

@@ -7,9 +7,9 @@ from datetime import datetime, timezone
 import logging
 import re
 
-from db import postgres
 from db import mongo
 from routers.live import broadcast_refresh
+from db.dependencies import PostgresPool
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -29,17 +29,18 @@ WEBHOOK_METHODS = [
 BASKET_NAME_PATTERN = re.compile(r"^[A-Za-z0-9]{1,50}$")
 
 @router.api_route("/{full_path:path}", methods=WEBHOOK_METHODS)
-async def receive_request(full_path: str, request: Request) -> dict[str, str]:
+async def receive_request(
+    full_path: str,
+    request: Request,
+    pool: PostgresPool,
+) -> dict[str, str]:
     # Extract and validate the first part of the path as the basket name:
     name = full_path.split('/', 1)[0]
     if not BASKET_NAME_PATTERN.match(name):
         raise HTTPException(status_code=404, detail="Page not found")
 
-    if postgres.pool is None:
-          raise HTTPException(503, "PostgreSQL unavailable")
-
     # If the basket name is valid, check if it exists
-    async with postgres.pool.acquire() as pg_connection:
+    async with pool.acquire() as pg_connection:
         basket = await pg_connection.fetchrow(
             "SELECT id FROM baskets WHERE name = $1", name
         )
@@ -57,6 +58,7 @@ async def receive_request(full_path: str, request: Request) -> dict[str, str]:
 
     request_document = { 
         "_id": request_id,
+        "basket_id": basket["id"],
         "received_at": received_at,
         "body": body
     }
@@ -68,7 +70,7 @@ async def receive_request(full_path: str, request: Request) -> dict[str, str]:
     # Insert into Postgres:
     basket_id = basket["id"]
     try:
-        async with postgres.pool.acquire() as pg_connection:
+        async with pool.acquire() as pg_connection:
             await pg_connection.execute(
                 """
                 INSERT INTO requests
