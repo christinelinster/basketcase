@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import type { CreatedBasket } from '../types/basket';
+import SVGButton from './SVGButton';
+import { ICON_COPY } from './icons';
 
 interface LandingPageProps {
   baskets: string[];
@@ -98,9 +100,14 @@ function LandingPage({ baskets, createdBasket, onCreate }: LandingPageProps) {
               <span className="mono" style={{ color: 'var(--color-accent-200)', fontSize: 13, overflowWrap: 'anywhere' }}>
                 {createdBasket.webhook_url}
               </span>
-              <button type="button" className="btn btn-secondary" onClick={copyWebhookUrl}>
-                Copy URL
-              </button>
+              <SVGButton
+                path={ICON_COPY}
+                onClick={copyWebhookUrl}
+                title="Copy webhook URL"
+                className="btn btn-ghost"
+                size={15}
+                style={{ padding: '2px 4px' }}
+              />
               {copied && <span style={{ color: 'var(--color-accent)', fontSize: 12 }}>Copied</span>}
             </div>
           </div>
