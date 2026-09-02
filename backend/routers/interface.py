@@ -46,10 +46,6 @@ class BasketDetailResponse(BaseModel):
     requests: list[BasketRequestResponse]
 
 
-@router.get("/baskets/hello")
-async def hello() -> dict[str, str]:
-    return {"message": "hello world"}
-
 @router.post(
     "/baskets",
     response_model=BasketResponse,

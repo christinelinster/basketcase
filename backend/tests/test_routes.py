@@ -101,13 +101,6 @@ async def client():
         yield async_client
 
 
-async def test_hello_route(client):
-    response = await client.get("/api/baskets/hello")
-
-    assert response.status_code == 200
-    assert response.json() == {"message": "hello world"}
-
-
 async def test_get_postgres_pool_returns_initialized_pool(monkeypatch):
     expected_pool = FakePool(RecordingConnection(None))
     monkeypatch.setattr(postgres, "pool", expected_pool)

@@ -62,7 +62,7 @@ describe('App basket ownership flows', () => {
 
     fireEvent.change(screen.getByRole('textbox'), { target: { value: 'demo123' } })
     await user.click(screen.getByRole('button', { name: 'Create' }))
-    await user.click(await screen.findByRole('button', { name: 'Copy URL' }))
+    await user.click(await screen.findByRole('button', { name: 'Copy webhook URL' }))
 
     expect(writeText).toHaveBeenCalledWith(createdBasket.webhook_url)
     expect(screen.getByText('Copied')).toBeInTheDocument()

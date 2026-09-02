@@ -1,75 +1,45 @@
-# React + TypeScript + Vite
+# Basketcase frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+The frontend is a React, TypeScript, and Vite application for creating local
+webhook baskets and inspecting their captured requests. See the
+[root setup guide](../README.md) for database initialization and the complete
+local workflow.
 
-Currently, two official plugins are available:
+## Install and start
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+From `frontend`:
 
-## React Compiler
-
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-
+```bash
+npm install
+npm run dev
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+Open `http://127.0.0.1:5173`.
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+The backend must be running at `http://127.0.0.1:8000`. During development,
+Vite proxies frontend `/api` requests to that address. If the backend uses a
+different port, update the proxy target in `vite.config.ts`.
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+## Local basket workflow
 
+1. Enter an alphanumeric name in the New Basket form.
+2. Select **Create**.
+3. Use **Copy URL** to copy the webhook URL returned by the backend.
+4. Send an HTTP request to that URL.
+5. Select the basket under My Baskets and refresh it to inspect the request.
+
+The frontend stores each created basket name and ownership token in browser
+local storage. It uses the token when deleting that basket. Baskets created in
+another browser do not appear in the local My Baskets list.
+
+## Commands
+
+```bash
+npm test
+npm run lint
+npm run build
 ```
+
+- `npm test` runs the Vitest test suite.
+- `npm run lint` runs ESLint.
+- `npm run build` type-checks and creates the production bundle.
