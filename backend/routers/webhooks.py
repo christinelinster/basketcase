@@ -1,11 +1,12 @@
-
-
 from fastapi import APIRouter, Request, HTTPException
+from fastapi.responses import FileResponse
 
-from uuid6 import uuid7
+from uuid6    import uuid7
 from datetime import datetime, timezone
 import logging
 import re
+
+from routers.route_config import get_route_config
 
 from db import mongo
 from routers.live import broadcast_refresh
@@ -25,19 +26,37 @@ WEBHOOK_METHODS = [
     "TRACE",
 ]
 
-# Alphanumeric basket names only, 1-50 characters.
+
 BASKET_NAME_PATTERN = re.compile(r"^[A-Za-z0-9]{1,50}$")
 
-@router.api_route("/{full_path:path}", methods=WEBHOOK_METHODS)
-async def receive_request(
+# Catch all requests to /{possibly_nested_path}:
+@router.api_route("/{full_path:path}", methods=WEBHOOK_METHODS, response_model=None)
+async def dispatch_request(
     full_path: str,
+    request: Request,
+    pool: PostgresPool
+) -> dict[str, str] | FileResponse:
+    name = full_path.split('/', 1)[0]
+
+    if name == "" or name.casefold() in get_route_config().reserved_names:
+        return serve_frontend()
+    elif not BASKET_NAME_PATTERN.match(name):
+        raise HTTPException(status_code=404, detail="Page not found")
+    else:
+        return await receive_request(name, request, pool)
+
+
+# Serve frontend SPA if a reserved path (ie. / or /baskets) is requested.
+def serve_frontend():
+    return FileResponse(get_route_config().frontend_dir / "index.html")
+
+
+# Capture requests to /{basketname}
+async def receive_request(
+    name: str,
     request: Request,
     pool: PostgresPool,
 ) -> dict[str, str]:
-    # Extract and validate the first part of the path as the basket name:
-    name = full_path.split('/', 1)[0]
-    if not BASKET_NAME_PATTERN.match(name):
-        raise HTTPException(status_code=404, detail="Page not found")
 
     # If the basket name is valid, check if it exists
     async with pool.acquire() as pg_connection:
@@ -48,13 +67,13 @@ async def receive_request(
         if basket is None:
             raise HTTPException(status_code=404, detail="Page not found")
 
-
-    # UUID7 > UUID4 for request_id; UUID7 includes a built-in timestamp for chronological sorting.
+    # UUID7 for request_id for built-in timestamping
     request_id = uuid7()
 
-    # Insert the request body into Mongo:
+
+    # Insert the raw request body into Mongo:
     received_at = datetime.now(timezone.utc)
-    body = await request.body() # Read the body as a stream of raw bytes
+    body = await request.body()
 
     request_document = { 
         "_id": request_id,
@@ -67,7 +86,7 @@ async def receive_request(
     await raw_requests_collection.insert_one(request_document)
 
 
-    # Insert into Postgres:
+    # Insert the parsed request into Postgres:
     basket_id = basket["id"]
     try:
         async with pool.acquire() as pg_connection:
@@ -97,3 +116,4 @@ async def receive_request(
     await broadcast_refresh(name)
 
     return { "status": "received" }
+
