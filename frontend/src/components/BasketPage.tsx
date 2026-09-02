@@ -58,8 +58,8 @@ function BasketPage({ onDelete }: BasketPageProps) {
 
   // Manual Refresh:  
   const refreshRequests = async () => {
-    const requests = await BasketService.loadBasketRequests(name)
-    setRequests(requests)
+    const basket = await BasketService.loadBasketDetails(name)
+    setRequests(basket.requests)
   }
 
   // Auto-Refresh. Note that this will ping the DB every 2.5s; to be replaced with WebSockets/SSE implementation.

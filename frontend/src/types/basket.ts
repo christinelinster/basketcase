@@ -1,9 +1,9 @@
 export interface BasketRequest {
-  id: number;
+  id: string;
   method: string;
   path: string;
-  headers: Record<string, string>;
-  query_params: Record<string, string>;
+  headers: Record<string, string | string[]>;
+  query_params: Record<string, string | string[]>;
   body: string | null;
   received_at: string;
 }
@@ -13,4 +13,11 @@ export interface Basket {
   capacity: number;
   expires_at: string;
   requests: BasketRequest[];
+}
+
+export interface CreatedBasket {
+  name: string;
+  webhook_url: string;
+  token: string;
+  expires_at: string;
 }
