@@ -11,6 +11,13 @@ export default defineConfig({
         target: 'http://127.0.0.1:8000',
         changeOrigin: true,
       },
+      // ws: true forwards the upgrade handshake instead of treating it as an
+      // ordinary request. Without it the socket would terminate at Vite, which
+      // knows nothing about /ws.
+      '/ws': {
+        target: 'http://127.0.0.1:8000',
+        ws: true,
+      },
     },
   },
   test: {

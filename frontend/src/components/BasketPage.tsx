@@ -4,11 +4,14 @@ import { useNavigate, useParams } from 'react-router-dom';
 // > Components
 import RequestCard from './RequestCard';
 import SVGButton from './SVGButton';
-import { ICON_COPY, ICON_REFRESH, ICON_CLOCK, ICON_LINK, ICON_TRASH } from './icons';
+import { ICON_COPY, ICON_REFRESH, ICON_LINK, ICON_TRASH } from './icons';
 // > Types
 import type { BasketRequest } from '../types/basket';
 // > Services
 import BasketService from '../services/BasketService';
+// > Hooks
+import useBasketRefresh from '../hooks/useBasketRefresh';
+import { ReadyState } from 'react-use-websocket';
 
 interface BasketPageProps {
   onDelete: (name: string) => void;
@@ -18,11 +21,7 @@ function BasketPage({ onDelete }: BasketPageProps) {
   const navigate = useNavigate()
   // State:
   const [ requests, setRequests ] = useState<BasketRequest[]>([]);
-  
-  // - Toggle auto-refresh
-  const [ auto, setAuto ] = useState(false);
-  const timer = useRef<number | null>(null);
-  
+
   // - Click-to-copy
   const [ copied, setCopied ] = useState('');
   const copyTimer = useRef<number | null>(null);
@@ -49,30 +48,22 @@ function BasketPage({ onDelete }: BasketPageProps) {
     }
 
     loadBasketDetails();
-
-    // Stop auto-refresh timer when the basket changes:
-    return stopTimer
   }, [name]);
 
-  if (name === undefined) return null
-
-  // Manual Refresh:  
+  // Used by the Refresh button and by the live-update socket below. Declared
+  // before the guard because hooks cannot be called after a conditional return.
   const refreshRequests = async () => {
+    if (name === undefined) return
+
     const basket = await BasketService.loadBasketDetails(name)
     setRequests(basket.requests)
   }
 
-  // Auto-Refresh. Note that this will ping the DB every 2.5s; to be replaced with WebSockets/SSE implementation.
-  const toggleAuto = () => timer.current ? stopTimer() : startTimer()
-  const startTimer = () => {
-    timer.current = setInterval(refreshRequests, 2500);
-    setAuto(true);
-  }
-  const stopTimer = () => {
-    if (timer.current) clearInterval(timer.current);
-    timer.current = null;
-    setAuto(false);
-  }
+  // Live updates: the server tells us when a request lands in this basket, and
+  // we re-read the list. Replaces the old 2.5s polling timer.
+  const readyState = useBasketRefresh(name, refreshRequests)
+
+  if (name === undefined) return null
 
   // Click-to-Copy:
   const url = `https://basketcase.com/${name}`;
@@ -84,7 +75,6 @@ function BasketPage({ onDelete }: BasketPageProps) {
   };
 
   const countLabel = `Requests: ${requests.length}`;
-  const autoStyle = auto ? { color: 'var(--color-accent)', borderColor: 'var(--color-accent)' } : {};
 
   // Styles
   const spotlightURLStyle = {
@@ -117,9 +107,25 @@ function BasketPage({ onDelete }: BasketPageProps) {
         </div>
 
         {/* Basket Controls */}
-        <div style={{ display: 'flex', gap: 6 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          {/* Live-update status. There is no automatic reconnect, so red means
+              the page must be reloaded to start receiving updates again. */}
+          { readyState !== ReadyState.UNINSTANTIATED &&
+            <span
+              className="mono"
+              title={ readyState === ReadyState.OPEN
+                ? 'Receiving live updates'
+                : 'Live updates stopped - reload the page to restart them' }
+              style={{ display: 'flex', alignItems: 'center', gap: 5, marginRight: 4, fontSize: 12 }}
+            >
+              <span style={{
+                width: 8, height: 8, borderRadius: '50%',
+                background: readyState === ReadyState.OPEN ? '#9ad99a' : '#d99a9a',
+              }} />
+              { readyState === ReadyState.OPEN ? 'Live' : 'Reload' }
+            </span>
+          }
           <SVGButton path={ICON_REFRESH} onClick={refreshRequests} title="Refresh" />
-          <SVGButton path={ICON_CLOCK} onClick={toggleAuto} title="Toggle auto-refresh" style={autoStyle} />
           <SVGButton path={ICON_LINK} onClick={() => copy(window.location.href, 'Link copied')} title="Copy share link" />
           <SVGButton path={ICON_TRASH} onClick={() => onDelete(name)} title="Delete basket" style={{ color: '#d99a9a' }} />
         </div>
