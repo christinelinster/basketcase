@@ -7,6 +7,7 @@ from pydantic import BaseModel, Field, field_validator
 
 from routers.route_config import get_route_config
 
+from db import mongo
 from db.dependencies import BasketToken, PostgresPool
 
 
@@ -144,7 +145,9 @@ async def delete_basket(
     token: BasketToken,
     pool: PostgresPool,
 ) -> Response:
-    """Delete a basket by name and token, and associated requests via cascade."""
+    """Delete the specified basket. Associated requests are deleted via cascade."""
+
+    # Delete the basket from Postgres:
     async with pool.acquire() as connection:
         deleted = await connection.fetchrow(
             """
@@ -155,9 +158,12 @@ async def delete_basket(
             name,
             token
         )
-
     if deleted is None:
         raise HTTPException(status_code=404, detail="Basket not found")
+
+    # Delete all associated requests from Mongo:
+    raw_requests_collection = mongo.get_database()["raw_requests"]
+    await raw_requests_collection.delete_many({"basket_id": deleted["id"]})
 
     return Response(status_code=204)
 
@@ -170,6 +176,8 @@ async def delete_request(
     pool: PostgresPool,
 ):
     """Delete one specific request from a basket by request ID."""
+
+    # Delete the request from Postgres:
     async with pool.acquire() as connection:
         basket = await connection.fetchrow(
             """
@@ -180,7 +188,6 @@ async def delete_request(
             name,
             token
         )
-
         if basket is None:
             raise HTTPException(status_code=404, detail="Request not found")
 
@@ -194,9 +201,12 @@ async def delete_request(
             request_id,
             basket["id"]
         )
-
     if deleted is None:
         raise HTTPException(status_code=404, detail="Request not found")
+
+    # Delete the request from Mongo:
+    raw_requests_collection = mongo.get_database()["raw_requests"]
+    await raw_requests_collection.delete_one({"_id": deleted["id"]})
 
     return Response(status_code=204)
 
@@ -208,6 +218,8 @@ async def delete_all_requests(
     pool: PostgresPool,
 ):
     """Delete every request inside a basket without deleting the basket itself."""
+
+    # Delete requests from Postgres:
     async with pool.acquire() as connection:
         basket = await connection.fetchrow(
             """
@@ -218,7 +230,6 @@ async def delete_all_requests(
             name,
             token
         )
-
         if basket is None:
             raise HTTPException(status_code=404, detail="Basket not found")
 
@@ -229,5 +240,9 @@ async def delete_all_requests(
             """,
             basket["id"]
         )
+
+    # Delete all associated requests from Mongo:
+    raw_requests_collection = mongo.get_database()["raw_requests"]
+    await raw_requests_collection.delete_many({"basket_id": basket["id"]})
 
     return Response(status_code=204)
