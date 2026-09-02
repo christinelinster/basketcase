@@ -9,6 +9,8 @@ import { ICON_COPY, ICON_REFRESH, ICON_CLOCK, ICON_LINK, ICON_TRASH } from './ic
 import type { BasketRequest } from '../types/basket';
 // > Services
 import BasketService from '../services/BasketService';
+// > Config
+import { basketUrl } from '../config';
 
 interface BasketPageProps {
   onDelete: (name: string) => void;
@@ -75,7 +77,7 @@ function BasketPage({ onDelete }: BasketPageProps) {
   }
 
   // Click-to-Copy:
-  const url = `https://basketcase.com/${name}`;
+  const url = basketUrl(name);
   const copy = (text: string, label: string) => {
     if (navigator.clipboard) navigator.clipboard.writeText(text).catch(() => {});
     setCopied(label);

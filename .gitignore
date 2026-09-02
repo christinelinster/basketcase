@@ -42,7 +42,7 @@ dist-ssr/
 .mypy_cache/
 
 # Agent rules
-AGENTS.md
+*.md
 
 # Tests
 tests/

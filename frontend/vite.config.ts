@@ -4,6 +4,9 @@ import react from '@vitejs/plugin-react'
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react()],
+  // Expose BASKETCASE_URL (in addition to the default VITE_ prefixed vars)
+  // to client code via import.meta.env.
+  envPrefix: ['VITE_', 'BASKETCASE_URL'],
   server: {
     port: 5173,
     proxy: {
