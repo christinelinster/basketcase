@@ -108,11 +108,7 @@ async def receive_request(
         logger.exception("Failed to insert parsed request into Postgres")
         raise HTTPException(status_code=500, detail="Internal server error") from error
 
-    # Tell anyone viewing this basket to reload. Deliberately outside the
-    # acquire() block above: this awaits network sends to browsers, and holding a
-    # pooled database connection while doing so would tie up the pool. It also
-    # has to run after the insert commits, since the signal tells the browser to
-    # go and read what was just written.
+    # Instruct any browsers connected to this basket (via WebSockets) to re-fetch basket data.
     await broadcast_refresh(name)
 
     return { "status": "received" }

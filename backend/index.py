@@ -36,8 +36,6 @@ async def lifespan(app: FastAPI):
 app = FastAPI(lifespan=lifespan)
 app.include_router(interface.router)
 app.mount("/assets", StaticFiles(directory=get_route_config().frontend_dir / "assets"))
-# Before webhooks: live owns /ws/{name}, and its HTTP fallback there must win
-# over the "/{full_path:path}" ingest catch-all.
 app.include_router(live.router)
 # Webhooks router must be mounted last so it doesn't swallow other requests
 app.include_router(webhooks.router)
