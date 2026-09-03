@@ -9,6 +9,7 @@ import re
 from routers.route_config import get_route_config
 
 from db import mongo
+from routers.live import broadcast_refresh
 from db.dependencies import PostgresPool
 
 router = APIRouter()
@@ -107,6 +108,8 @@ async def receive_request(
         logger.exception("Failed to insert parsed request into Postgres")
         raise HTTPException(status_code=500, detail="Internal server error") from error
 
-    
+    # Instruct any browsers connected to this basket (via WebSockets) to re-fetch basket data.
+    await broadcast_refresh(name)
+
     return { "status": "received" }
 

@@ -3,7 +3,7 @@ from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 import uvicorn
 
-from routers import interface, webhooks
+from routers import interface, live, webhooks
 from routers.route_config import get_route_config
 
 from db import mongo, postgres
@@ -36,6 +36,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(lifespan=lifespan)
 app.include_router(interface.router)
 app.mount("/assets", StaticFiles(directory=get_route_config().frontend_dir / "assets"))
+app.include_router(live.router)
 # Webhooks router must be mounted last so it doesn't swallow other requests
 app.include_router(webhooks.router)
 
