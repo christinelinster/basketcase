@@ -80,6 +80,8 @@ class MutationConnection:
 class MongoCollection:
     def __init__(self):
         self.insert_one = AsyncMock()
+        self.delete_many = AsyncMock()
+        self.delete_one = AsyncMock()
 
 
 class MongoDatabase:
@@ -137,6 +139,9 @@ async def test_delete_basket_uses_injected_token(client, monkeypatch):
     token = uuid.UUID("12345678-1234-5678-1234-567812345678")
     connection = RecordingConnection({"id": 7})
     monkeypatch.setattr(postgres, "pool", FakePool(connection))
+    collection = MongoCollection()
+    database = MongoDatabase(collection)
+    monkeypatch.setattr(mongo, "get_database", lambda: database)
     app.dependency_overrides[get_basket_token] = lambda: token
 
     try:
@@ -147,6 +152,118 @@ async def test_delete_basket_uses_injected_token(client, monkeypatch):
     assert response.status_code == 204
     _, args = connection.fetchrow_calls[0]
     assert args == ("demo123", token)
+    collection.delete_many.assert_awaited_once_with({"basket_id": 7})
+
+
+async def test_delete_request_returns_not_found_for_unknown_basket(client, monkeypatch):
+    connection = RecordingConnection(None)
+    monkeypatch.setattr(postgres, "pool", FakePool(connection))
+    token = uuid.UUID("12345678-1234-5678-1234-567812345678")
+    app.dependency_overrides[get_basket_token] = lambda: token
+
+    try:
+        response = await client.delete(
+            f"/api/baskets/demo123/requests/{uuid.uuid4()}"
+        )
+    finally:
+        app.dependency_overrides.pop(get_basket_token, None)
+
+    assert response.status_code == 404
+    assert response.json() == {"detail": "Request not found"}
+
+
+async def test_delete_request_returns_not_found_for_request_in_another_basket(
+    client, monkeypatch
+):
+    request_id = uuid.uuid4()
+    connection = MutationConnection([{"id": 7}, None])
+    monkeypatch.setattr(postgres, "pool", FakePool(connection))
+    token = uuid.UUID("12345678-1234-5678-1234-567812345678")
+    app.dependency_overrides[get_basket_token] = lambda: token
+
+    try:
+        response = await client.delete(f"/api/baskets/demo123/requests/{request_id}")
+    finally:
+        app.dependency_overrides.pop(get_basket_token, None)
+
+    assert response.status_code == 404
+    assert response.json() == {"detail": "Request not found"}
+    _, delete_args = connection.fetchrow_calls[1]
+    assert delete_args == (request_id, 7)
+
+
+async def test_delete_request_deletes_from_mongo(client, monkeypatch):
+    request_id = uuid.uuid4()
+    connection = MutationConnection([{"id": 7}, {"id": request_id}])
+    monkeypatch.setattr(postgres, "pool", FakePool(connection))
+    collection = MongoCollection()
+    database = MongoDatabase(collection)
+    monkeypatch.setattr(mongo, "get_database", lambda: database)
+    token = uuid.UUID("12345678-1234-5678-1234-567812345678")
+    app.dependency_overrides[get_basket_token] = lambda: token
+
+    try:
+        response = await client.delete(f"/api/baskets/demo123/requests/{request_id}")
+    finally:
+        app.dependency_overrides.pop(get_basket_token, None)
+
+    assert response.status_code == 204
+    collection.delete_one.assert_awaited_once_with({"_id": request_id})
+
+
+async def test_delete_all_requests_returns_not_found_for_unknown_basket(
+    client, monkeypatch
+):
+    connection = RecordingConnection(None)
+    monkeypatch.setattr(postgres, "pool", FakePool(connection))
+    token = uuid.UUID("12345678-1234-5678-1234-567812345678")
+    app.dependency_overrides[get_basket_token] = lambda: token
+
+    try:
+        response = await client.delete("/api/baskets/demo123/requests")
+    finally:
+        app.dependency_overrides.pop(get_basket_token, None)
+
+    assert response.status_code == 404
+    assert response.json() == {"detail": "Basket not found"}
+
+
+async def test_delete_all_requests_scopes_deletion_to_basket(client, monkeypatch):
+    connection = MutationConnection([{"id": 7}])
+    monkeypatch.setattr(postgres, "pool", FakePool(connection))
+    collection = MongoCollection()
+    database = MongoDatabase(collection)
+    monkeypatch.setattr(mongo, "get_database", lambda: database)
+    token = uuid.UUID("12345678-1234-5678-1234-567812345678")
+    app.dependency_overrides[get_basket_token] = lambda: token
+
+    try:
+        response = await client.delete("/api/baskets/demo123/requests")
+    finally:
+        app.dependency_overrides.pop(get_basket_token, None)
+
+    assert response.status_code == 204
+    query, execute_args = connection.execute_calls[0]
+    assert "WHERE basket_id = $1" in query
+    assert execute_args == (7,)
+
+
+async def test_delete_all_requests_deletes_from_mongo(client, monkeypatch):
+    connection = MutationConnection([{"id": 7}])
+    monkeypatch.setattr(postgres, "pool", FakePool(connection))
+    collection = MongoCollection()
+    database = MongoDatabase(collection)
+    monkeypatch.setattr(mongo, "get_database", lambda: database)
+    token = uuid.UUID("12345678-1234-5678-1234-567812345678")
+    app.dependency_overrides[get_basket_token] = lambda: token
+
+    try:
+        response = await client.delete("/api/baskets/demo123/requests")
+    finally:
+        app.dependency_overrides.pop(get_basket_token, None)
+
+    assert response.status_code == 204
+    collection.delete_many.assert_awaited_once_with({"basket_id": 7})
 
 
 async def test_create_basket_uses_injected_postgres_pool(client, monkeypatch):

@@ -22,6 +22,10 @@ async def initialize_mongo_schema() -> None:
         [("received_at", DESCENDING)],
         name="raw_requests_received_at_desc",
     )
+    await collection.create_index(
+        [("basket_id", DESCENDING)],
+        name="raw_requests_basket_id_desc",
+    )
 
 
 async def initialize_databases() -> None:
