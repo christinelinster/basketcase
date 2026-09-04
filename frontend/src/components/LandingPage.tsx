@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import type { CreatedBasket } from '../types/basket';
 import SVGButton from './SVGButton';
 import { ICON_COPY } from './icons';
+import { BASKETCASE_URL } from '../config';
 
 interface LandingPageProps {
   baskets: string[];
@@ -74,7 +75,7 @@ function LandingPage({ baskets, createdBasket, onCreate }: LandingPageProps) {
               className="mono text-muted"
               style={{ display: 'flex', alignItems: 'center', padding: '0 2px 0 12px', fontSize: 13, whiteSpace: 'nowrap' }}
             >
-              https://basketcase.com/
+              {BASKETCASE_URL}/
             </span>
 
             <input
