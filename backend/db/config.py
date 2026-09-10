@@ -64,7 +64,7 @@ def get_aws_params(path: str, region_name: str = 'us-east-1'):
     return parsed_params
 
 
-def get_aws_pg_credentials(secret_name: str, region_name: str = 'us-east-1'):
+def get_aws_db_secrets(secret_name: str, region_name: str = 'us-east-1'):
     if secret_name is None:
         return None
     
@@ -85,29 +85,23 @@ def get_aws_pg_credentials(secret_name: str, region_name: str = 'us-east-1'):
         # https://docs.aws.amazon.com/secretsmanager/latest/apireference/API_GetSecretValue.html
         raise e
 
+    return secret_value
+
+    
+def get_aws_pg_credentials(secret_name: str, region_name: str = 'us-east-1'):
+    secret_value = get_aws_db_secrets(secret_name, region_name)
+    if secret_value is None:
+        return None
+
     secret = json.loads(secret_value['SecretString'])
     return { 'username': secret['username'], 'password': secret['password'] }
 
 
 # Return the entire MongoDB connection URL as a string
 def get_aws_mongo_url(secret_name: str, region_name: str = 'us-east-1'):
-    if secret_name is None:
+    secret_value = get_aws_db_secrets(secret_name, region_name)
+    if secret_value is None:
         return None
-    
-    secret_name = secret_name
-    region_name = region_name
-
-    # Create a Secrets Manager client
-    session = boto3.session.Session()
-    client = session.client(
-        service_name='secretsmanager',
-        region_name=region_name
-    )
-
-    try:
-        secret_value = client.get_secret_value(SecretId=secret_name)
-    except ClientError as e:
-        raise e
 
     return secret_value['SecretString'].strip().strip('"')
     
