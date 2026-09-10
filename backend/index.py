@@ -6,6 +6,8 @@ import uvicorn
 from routers import interface, live, webhooks
 from routers.route_config import get_route_config
 
+from datetime import datetime, timezone
+
 from db import mongo, postgres
 from db.config import get_settings
 
@@ -34,6 +36,13 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(lifespan=lifespan)
+app.get("/api/health")
+async def health_check():
+    return {
+        "status": "OK",
+        "timestamp": datetime.now(timezone.utc).isoformat()
+    }
+
 app.include_router(interface.router)
 app.mount("/assets", StaticFiles(directory=get_route_config().frontend_dir / "assets"))
 app.include_router(live.router)
