@@ -28,7 +28,7 @@ def get_settings() -> Settings:
 
     # AWS Credentials/Params
     aws_pg_credentials = get_aws_pg_credentials(os.getenv("AWS_PGSECRET")) or {}
-    aws_mongo_url      = get_aws_mongo_credentials(os.getenv("AWS_MONGODB_SECRET")) or ''
+    aws_mongo_url      = get_aws_mongo_url(os.getenv("AWS_MONGODB_SECRET")) or ''
     aws_pg_params      = get_aws_params(os.getenv("AWS_PGPARAMS_PATH")) or {}
     aws_mongo_params   = get_aws_params(os.getenv("AWS_MONGODB_PARAMS_PATH")) or {}
 
@@ -90,7 +90,7 @@ def get_aws_pg_credentials(secret_name: str, region_name: str = 'us-east-1'):
 
 
 # Return the entire MongoDB connection URL as a string
-def get_aws_mongo_credentials(secret_name: str, region_name: str = 'us-east-1'):
+def get_aws_mongo_url(secret_name: str, region_name: str = 'us-east-1'):
     if secret_name is None:
         return None
     
@@ -109,5 +109,5 @@ def get_aws_mongo_credentials(secret_name: str, region_name: str = 'us-east-1'):
     except ClientError as e:
         raise e
 
-    return secret_value['SecretString']
+    return secret_value['SecretString'].strip().strip('"')
     
