@@ -70,6 +70,29 @@
 }
 .elev-sm { box-shadow: var(--shadow-sm); }
 
+/* live arrival: hold the tint briefly, then fade. Duration matches HIGHLIGHT_MS in useLiveArrivals. */
+@keyframes arrival-fade {
+  0%, 20% { background: color-mix(in srgb, var(--color-accent) 22%, var(--color-surface)); }
+  100% { background: var(--color-surface); }
+}
+.card-arrived { animation: arrival-fade 3s ease-out; }
+
+/* "N new requests" pill: floats over the page while live arrivals are above the viewport. */
+.new-pill {
+  position: fixed;
+  top: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 10;
+  font-size: 13px;
+  padding: 6px 14px;
+  border-radius: var(--radius-lg);
+  color: var(--color-bg);
+  background: var(--color-accent);
+  box-shadow: var(--shadow-md);
+}
+.new-pill:hover { background: var(--color-accent-400); }
+
 /* — tags — */
 .tag {
   display: inline-flex;

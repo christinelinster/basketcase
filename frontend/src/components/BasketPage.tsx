@@ -13,6 +13,7 @@ import BasketService from '../services/BasketService';
 import { basketUrl } from '../config';
 // > Hooks
 import useBasketRefresh from '../hooks/useBasketRefresh';
+import useLiveArrivals from '../hooks/useLiveArrivals';
 
 interface BasketPageProps {
   onDelete: (name: string) => void;
@@ -29,6 +30,12 @@ function BasketPage({ onDelete }: BasketPageProps) {
   // --------------------------------------------------------------
   // 1) Extract :name from URL:
   const { name } = useParams()
+  const { highlighted, pillCount, setBaseline, recordRefresh, setScrolledAway } = useLiveArrivals(name);
+  const listRef = useRef<HTMLDivElement>(null);
+
+  // Responses for a basket we've since left are ignored.
+  const currentName = useRef(name);
+  useEffect(() => { currentName.current = name }, [name]);
 
   // 2) Load basket & request details:
   useEffect(() => {
@@ -40,6 +47,8 @@ function BasketPage({ onDelete }: BasketPageProps) {
     const loadBasketDetails = async () => {
       try {
         const basket = await BasketService.loadBasketDetails(name)
+        if (name !== currentName.current) return
+        setBaseline(basket.requests)
         setRequests(basket.requests)
       } catch (error) {
         console.error(error)
@@ -53,10 +62,22 @@ function BasketPage({ onDelete }: BasketPageProps) {
 
   const refreshRequests = async (basketName: string) => {
     const basket = await BasketService.loadBasketDetails(basketName)
+    if (basketName !== currentName.current) return
+    recordRefresh(basket.requests)
     setRequests(basket.requests)
   }
 
   const isLive = useBasketRefresh(name, refreshRequests)
+
+  // 3) Track whether the top of the request list has scrolled out of view:
+  useEffect(() => {
+    const onScroll = () => {
+      const listTop = listRef.current?.getBoundingClientRect().top ?? 0
+      setScrolledAway(listTop < -100)
+    }
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => window.removeEventListener('scroll', onScroll)
+  }, [])
 
   if (name === undefined) return null
 
@@ -80,6 +101,15 @@ function BasketPage({ onDelete }: BasketPageProps) {
 
   return (
     <main style={{ flex: 1, padding: '28px 28px 72px', maxWidth: 1080, width: '100%', margin: '0 auto' }}>
+      {/* New Requests Pill */}
+      <div aria-live="polite">
+        { pillCount > 0 &&
+          <button className="btn new-pill" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
+            ↑ {pillCount} new {pillCount === 1 ? 'request' : 'requests'}
+          </button>
+        }
+      </div>
+
       {/* Basket Header */}
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: 16, flexWrap: 'wrap' }}>
         <div style={{ flex: 1, minWidth: 0 }}>
@@ -127,9 +157,9 @@ function BasketPage({ onDelete }: BasketPageProps) {
 
       {/* Requests List */}
       { requests.length > 0 && 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 16 }}>
+        <div ref={listRef} style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 16 }}>
           { requests.map((req) => (
-            <RequestCard key={req.id} request={req} />
+            <RequestCard key={req.id} request={req} highlighted={highlighted.has(req.id)} />
           )) }
         </div>
       }

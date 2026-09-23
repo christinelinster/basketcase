@@ -27,9 +27,10 @@ const buildQueryString = (queryParams: Record<string, string | string[]>) => {
 
 interface RequestCardProps {
   request: BasketRequest;
+  highlighted?: boolean;
 }
 
-function RequestCard({ request }: RequestCardProps) {
+function RequestCard({ request, highlighted = false }: RequestCardProps) {
   const [open, setOpen] = useState<Record<string, boolean>>({});
   const [pretty, setPretty] = useState(false);
 
@@ -55,7 +56,7 @@ function RequestCard({ request }: RequestCardProps) {
   const path = query.length > 0 ? `${request.path}?${buildQueryString(request.query_params)}` : request.path;
 
   return (
-    <article className="card elev-sm" style={{ padding: 0, gap: 0, overflow: 'hidden' }}>
+    <article className={`card elev-sm${highlighted ? ' card-arrived' : ''}`} style={{ padding: 0, gap: 0, overflow: 'hidden' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px' }}>
         <span
           className="mono"
